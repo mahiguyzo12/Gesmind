@@ -1,0 +1,28 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Vérifie que l'utilisateur est authentifié (Anonyme ou identifié)
+    // Cela bloque tout accès non autorisé venant de l'extérieur de l'application
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 1. Registre des boutiques (Liste visible au démarrage)
+    match /stores_registry/{storeId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth();
+    }
+
+    // 2. Données internes des boutiques
+    match /stores/{storeId} {
+      allow read, write: if isAuth();
+
+      // Accès aux sous-collections (inventory, users, transactions, etc.)
+      match /{subcollection}/{document=**} {
+        allow read, write: if isAuth();
+      }
+    }
+  }
+}

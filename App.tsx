@@ -16,6 +16,7 @@ import { Customers } from './components/Customers';
 import { Suppliers } from './components/Suppliers';
 import { Expenses } from './components/Expenses';
 import { UpdateBanner } from './components/UpdateBanner';
+import { Toast } from './components/Toast'; // Import Toast
 import { InventoryItem, ViewState, Transaction, User, CashMovement, StoreSettings, BackupData, CloudProvider, CashClosing, Customer, Supplier, AppUpdate, StoreMetadata, Expense, Employee } from './types';
 import { CURRENCIES, PERMISSION_CATEGORIES } from './constants';
 import { checkForUpdates } from './services/updateService';
@@ -25,7 +26,6 @@ import { db, setupFirebase } from './src/firebaseConfig';
 
 // Import Firestore Service
 import { 
-  subscribeToStoresRegistry, 
   createStoreInDB, 
   deleteStoreFromDB,
   subscribeToInventory,
@@ -41,7 +41,8 @@ import {
   addData,
   updateData,
   deleteData,
-  updateSettingsInDB
+  updateSettingsInDB,
+  getStoreMetadata
 } from './src/services/firestoreService';
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -63,8 +64,8 @@ const App: React.FC = () => {
   // SUPERVISION STATE (Option 1)
   const [supervisionTarget, setSupervisionTarget] = useState<User | null>(null);
   
-  // Multi-Store Management
-  const [availableStores, setAvailableStores] = useState<StoreMetadata[]>([]);
+  // Multi-Store Management (LOCALLY KNOWN STORES)
+  const [knownStores, setKnownStores] = useState<StoreMetadata[]>([]);
   const [currentStoreId, setCurrentStoreId] = useState<string | null>(localStorage.getItem('gesmind_last_store_id'));
 
   // Logout Modal State
@@ -72,6 +73,9 @@ const App: React.FC = () => {
 
   // DB Connection State
   const [isDbConfigured, setIsDbConfigured] = useState(!!db || localStorage.getItem('gesmind_db_mode') === 'LOCAL');
+
+  // TOAST STATE
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error' | 'info'} | null>(null);
 
   // Data State
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -92,19 +96,34 @@ const App: React.FC = () => {
   // Update State
   const [availableUpdate, setAvailableUpdate] = useState<AppUpdate | null>(null);
   
-  // --- 1. LOAD STORE LIST (Registry) ---
+  // --- 0. INITIAL CHECK ---
   useEffect(() => {
-    if (!isDbConfigured) return;
+    // Si db est initialisé après le premier rendu, on met à jour l'état
+    if (db && !isDbConfigured) {
+        setIsDbConfigured(true);
+    }
+  }, [db]);
 
-    const unsubscribe = subscribeToStoresRegistry((stores) => {
-      setAvailableStores(stores);
-      if (stores.length > 0 && !currentStoreId) {
-        setCurrentStoreId(stores[0].id);
-      }
-    });
+  // --- 1. LOAD KNOWN STORES (Local History) ---
+  useEffect(() => {
+    const saved = localStorage.getItem('gesmind_known_stores');
+    if (saved) {
+      try {
+        const list = JSON.parse(saved);
+        setKnownStores(list);
+        if (list.length > 0 && !currentStoreId) {
+           setCurrentStoreId(list[0].id);
+        }
+      } catch (e) { console.error("Error loading known stores", e); }
+    }
+  }, []);
 
-    return () => unsubscribe();
-  }, [isDbConfigured]);
+  // Save Known Stores on change
+  useEffect(() => {
+    if (knownStores.length > 0) {
+      localStorage.setItem('gesmind_known_stores', JSON.stringify(knownStores));
+    }
+  }, [knownStores]);
 
   useEffect(() => {
     if (currentStoreId) {
@@ -137,7 +156,11 @@ const App: React.FC = () => {
     const unsubClose = subscribeToCashClosings(currentStoreId, setCashClosings);
     
     const unsubSettings = subscribeToSettings(currentStoreId, (settings) => {
-      if (settings) setStoreSettings(settings);
+      if (settings) {
+        setStoreSettings(settings);
+        // Update local metadata if name/logo changed
+        setKnownStores(prev => prev.map(s => s.id === currentStoreId ? { ...s, name: settings.name, logoUrl: settings.logoUrl } : s));
+      }
     });
 
     setCurrentView(ViewState.LOGIN);
@@ -170,6 +193,23 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, [currentUser?.id, currentStoreId]);
 
+  // --- 4. AUTO UPDATE CHECK ---
+  useEffect(() => {
+    const check = async () => {
+       if (storeSettings.githubRepo) {
+           try {
+               const update = await checkForUpdates(storeSettings.githubRepo);
+               if (update.hasUpdate) {
+                   setAvailableUpdate(update);
+               }
+           } catch (e) { console.error("Auto update check failed", e); }
+       }
+    };
+    // Delay check slightly to not block render
+    const timer = setTimeout(check, 2000);
+    return () => clearTimeout(timer);
+  }, [storeSettings.githubRepo]);
+
   useEffect(() => {
     const root = window.document.documentElement;
     if (storeSettings.themeMode === 'dark') {
@@ -181,24 +221,58 @@ const App: React.FC = () => {
     root.style.setProperty('--primary-color', color);
   }, [storeSettings.themeMode, storeSettings.themeColor]);
 
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+      setToast({ message, type });
+  };
+
   const handleDbSetup = (configJson: string) => {
     const success = setupFirebase(configJson);
     if (success) {
       setIsDbConfigured(true);
+      showToast("Configuration Firebase appliquée avec succès !", "success");
       return true;
     }
+    showToast("Erreur de configuration. Vérifiez le format JSON.", "error");
     return false;
+  };
+
+  // --- HANDLER: Find Existing Store (Step 1: Lookup) ---
+  const handleFindStore = async (storeId: string): Promise<StoreMetadata | null> => {
+      // Check local known stores first to avoid network if already added
+      const known = knownStores.find(s => s.id === storeId);
+      if (known) return known;
+
+      // Check DB
+      const metadata = await getStoreMetadata(storeId);
+      if (metadata) {
+          return metadata;
+      } else {
+          showToast("Aucune boutique trouvée avec cet ID.", "error");
+          return null;
+      }
+  };
+
+  // --- HANDLER: Add Known Store (Step 2: Confirm) ---
+  const handleAddKnownStore = (metadata: StoreMetadata) => {
+      // Check if already exists to prevent duplicates
+      if (!knownStores.some(s => s.id === metadata.id)) {
+          setKnownStores(prev => [...prev, metadata]);
+      }
+      setCurrentStoreId(metadata.id);
+      showToast("Boutique sélectionnée !", "success");
   };
 
   const saveStoreSettings = (newData: StoreSettings) => {
     if (currentStoreId) {
       updateSettingsInDB(currentStoreId, newData);
+      showToast("Paramètres sauvegardés", "success");
     }
   };
 
   const saveCurrency = (code: string) => {
     setCurrencyCode(code);
     localStorage.setItem('gesmind_local_currency', code);
+    showToast("Devise mise à jour", "info");
   };
 
   const selectedCurrency = CURRENCIES[currencyCode] || CURRENCIES['EUR'];
@@ -211,30 +285,57 @@ const App: React.FC = () => {
           item.createdBy = supervisionTarget.id;
       }
       addData(currentStoreId, 'inventory', item);
+      showToast("Produit ajouté", "success");
   }
   const handleUpdateItem = (id: string, updatedItem: Partial<InventoryItem>) => currentStoreId && updateData(currentStoreId, 'inventory', id, updatedItem);
-  const handleDeleteItem = (id: string) => currentStoreId && deleteData(currentStoreId, 'inventory', id);
+  const handleDeleteItem = (id: string) => {
+      if(currentStoreId) {
+          deleteData(currentStoreId, 'inventory', id);
+          showToast("Produit supprimé", "info");
+      }
+  };
 
-  const handleAddUser = (user: User) => currentStoreId && addData(currentStoreId, 'users', user);
+  const handleAddUser = (user: User) => {
+      if(currentStoreId) {
+          addData(currentStoreId, 'users', user);
+          showToast("Utilisateur créé", "success");
+      }
+  };
   const handleUpdateUser = (id: string, updatedData: Partial<User>) => {
     if (currentStoreId) {
         updateData(currentStoreId, 'users', id, updatedData);
         if (currentUser && currentUser.id === id) {
             setCurrentUser({ ...currentUser, ...updatedData });
         }
+        showToast("Utilisateur mis à jour", "success");
     }
   };
   const handleDeleteUser = (id: string) => currentStoreId && deleteData(currentStoreId, 'users', id);
 
-  const handleAddEmployee = (emp: Employee) => currentStoreId && addData(currentStoreId, 'employees', emp);
+  const handleAddEmployee = (emp: Employee) => {
+      if(currentStoreId) {
+          addData(currentStoreId, 'employees', emp);
+          showToast("Dossier employé créé", "success");
+      }
+  };
   const handleUpdateEmployee = (id: string, updatedData: Partial<Employee>) => currentStoreId && updateData(currentStoreId, 'employees', id, updatedData);
   const handleDeleteEmployee = (id: string) => currentStoreId && deleteData(currentStoreId, 'employees', id);
 
-  const handleAddCustomer = (c: Customer) => currentStoreId && addData(currentStoreId, 'customers', c);
+  const handleAddCustomer = (c: Customer) => {
+      if(currentStoreId) {
+          addData(currentStoreId, 'customers', c);
+          showToast("Client ajouté", "success");
+      }
+  };
   const handleUpdateCustomer = (id: string, d: Partial<Customer>) => currentStoreId && updateData(currentStoreId, 'customers', id, d);
   const handleDeleteCustomer = (id: string) => currentStoreId && deleteData(currentStoreId, 'customers', id);
 
-  const handleAddSupplier = (s: Supplier) => currentStoreId && addData(currentStoreId, 'suppliers', s);
+  const handleAddSupplier = (s: Supplier) => {
+      if(currentStoreId) {
+          addData(currentStoreId, 'suppliers', s);
+          showToast("Fournisseur ajouté", "success");
+      }
+  };
   const handleUpdateSupplier = (id: string, d: Partial<Supplier>) => currentStoreId && updateData(currentStoreId, 'suppliers', id, d);
   const handleDeleteSupplier = (id: string) => currentStoreId && deleteData(currentStoreId, 'suppliers', id);
 
@@ -255,6 +356,7 @@ const App: React.FC = () => {
         performedBy: expense.paidBy
       };
       addData(currentStoreId, 'cash_movements', movement);
+      showToast("Dépense enregistrée", "success");
     }
   };
   const handleDeleteExpense = (id: string) => currentStoreId && deleteData(currentStoreId, 'expenses', id);
@@ -318,6 +420,7 @@ const App: React.FC = () => {
             });
         }
     }
+    showToast("Transaction validée", "success");
   };
 
   const handleSettleTransaction = (transactionId: string, amountToPay: number) => {
@@ -352,6 +455,7 @@ const App: React.FC = () => {
         performedBy: performerName
      };
      addData(currentStoreId, 'cash_movements', movement);
+     showToast("Règlement enregistré", "success");
   };
 
   const handleAddCashMovement = (movement: CashMovement) => {
@@ -360,6 +464,7 @@ const App: React.FC = () => {
             movement.performedBy = `${currentUser?.name} (pour ${supervisionTarget.name})`;
         }
         addData(currentStoreId, 'cash_movements', movement);
+        showToast("Mouvement de caisse ajouté", "success");
     }
   };
 
@@ -400,10 +505,11 @@ const App: React.FC = () => {
     };
     addData(currentStoreId, 'cash_closings', newClosing);
     updateSettingsInDB(currentStoreId, { ...storeSettings, lastClosingDate: closingDate });
+    showToast("Caisse clôturée avec succès", "info");
   };
 
   // --- Store Creation ---
-  const handleCreateStore = async (storeName: string, adminName: string, adminPin: string, logoUrl?: string) => {
+  const handleCreateStore = async (storeName: string, adminName: string, adminPin: string, logoUrl?: string, recoveryKey?: string, email?: string, phone?: string) => {
     const newStoreId = `store_${Date.now()}`;
     
     // GENERATE ALL PERMISSIONS FOR ADMIN
@@ -429,6 +535,9 @@ const App: React.FC = () => {
       ...DEFAULT_SETTINGS, 
       name: storeName, 
       logoUrl: logoUrl,
+      recoveryKey: recoveryKey, 
+      email: email || '',
+      phone: phone || '',
       lastClosingDate: new Date().toISOString() 
     };
 
@@ -440,7 +549,9 @@ const App: React.FC = () => {
 
     try {
       await createStoreInDB(newStoreId, newMetadata, newSettings, newAdmin);
+      setKnownStores(prev => [...prev, newMetadata]);
       setCurrentStoreId(newStoreId);
+      showToast("Entreprise créée avec succès", "success");
     } catch (e) {
       alert("Erreur lors de la création de la boutique.");
     }
@@ -450,11 +561,52 @@ const App: React.FC = () => {
     const admin = users.find(u => u.role === 'ADMIN' && u.name.toLowerCase() === adminName.toLowerCase() && u.pin === adminPin);
     if (admin && currentStoreId) {
       deleteStoreFromDB(currentStoreId).then(() => {
+         setKnownStores(prev => prev.filter(s => s.id !== currentStoreId));
          setCurrentStoreId(null);
+         showToast("Entreprise supprimée", "info");
       });
       return true;
     }
     return false;
+  };
+
+  // --- RECOVERY LOGIC - VERIFICATION (IMPROVED) ---
+  const handleVerifyRecoveryInfo = (method: 'KEY' | 'CONTACT', value: string): boolean => {
+      if (method === 'KEY') {
+          // Compare keys strictly but handle whitespace
+          return (storeSettings.recoveryKey || '').trim() === value.trim();
+      } else if (method === 'CONTACT') {
+          const cleanInput = value.trim();
+          
+          // 1. EMAIL CHECK (Case insensitive)
+          const registeredEmail = (storeSettings.email || '').trim().toLowerCase();
+          if (registeredEmail && registeredEmail === cleanInput.toLowerCase()) {
+              return true;
+          }
+
+          // 2. PHONE CHECK (Aggressive Normalization)
+          // We remove everything that isn't a digit to compare "raw" numbers
+          const normalize = (str: string) => str.replace(/[^0-9]/g, '');
+          const registeredPhone = normalize(storeSettings.phone || '');
+          const inputPhone = normalize(cleanInput);
+
+          // We check if numbers match AND have a decent length (to avoid matching empty or '0')
+          if (registeredPhone && registeredPhone === inputPhone && registeredPhone.length >= 4) {
+              return true;
+          }
+      }
+      return false;
+  };
+
+  // --- RECOVERY LOGIC - RESET PIN ---
+  const handleAdminResetPin = (newPin: string): boolean => {
+      const admin = users.find(u => u.role === 'ADMIN');
+      if (admin && currentStoreId) {
+          updateData(currentStoreId, 'users', admin.id, { pin: newPin });
+          showToast("Code PIN administrateur réinitialisé !", "success");
+          return true;
+      }
+      return false;
   };
 
   // --- Auth Handlers ---
@@ -464,6 +616,7 @@ const App: React.FC = () => {
     setCurrentUser({ ...user, lastLogin: now });
     setCurrentView(ViewState.MENU);
     setSupervisionTarget(null); // Clear supervision on new login
+    showToast(`Bienvenue, ${user.name}`, "success");
   };
 
   const requestLogout = () => setIsLogoutModalOpen(true);
@@ -478,11 +631,13 @@ const App: React.FC = () => {
   const handleStartSupervision = (targetUser: User) => {
       setSupervisionTarget(targetUser);
       setCurrentView(ViewState.DASHBOARD); // Jump to their dashboard
+      showToast(`Mode Supervision : ${targetUser.name}`, "info");
   };
 
   const handleStopSupervision = () => {
       setSupervisionTarget(null);
       setCurrentView(ViewState.USERS); // Return to list
+      showToast("Mode Supervision désactivé", "info");
   };
 
   // --- Backup Handlers ---
@@ -507,6 +662,7 @@ const App: React.FC = () => {
     a.href = dataStr;
     a.download = `gesmind_backup_${storeSettings.name}_${new Date().toISOString().split('T')[0]}.json`;
     a.click();
+    showToast("Sauvegarde exportée", "success");
   };
 
   const handleImportData = () => alert("L'importation écrase la base de données. Fonction désactivée par sécurité en mode Cloud.");
@@ -540,20 +696,27 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     return (
-      <Auth 
-        users={users} 
-        onLogin={handleLogin} 
-        onCreateStore={handleCreateStore}
-        storeName={storeSettings.name}
-        storeLogo={storeSettings.logoUrl}
-        onDeleteStore={handleDeleteStore}
-        availableStores={availableStores}
-        currentStoreId={currentStoreId}
-        onSelectStore={setCurrentStoreId}
-        lang={storeSettings.language}
-        isDbConnected={isDbConfigured}
-        onSetupDb={handleDbSetup}
-      />
+      <>
+        <Auth 
+          users={users} 
+          onLogin={handleLogin} 
+          onCreateStore={handleCreateStore}
+          storeName={storeSettings.name}
+          storeLogo={storeSettings.logoUrl}
+          onDeleteStore={handleDeleteStore}
+          availableStores={knownStores}
+          currentStoreId={currentStoreId}
+          onSelectStore={setCurrentStoreId}
+          onFindStore={handleFindStore} 
+          onAddKnownStore={handleAddKnownStore} 
+          onVerifyRecoveryInfo={handleVerifyRecoveryInfo} /* New verification prop */
+          onResetPassword={handleAdminResetPin} /* Changed signature */
+          lang={storeSettings.language}
+          isDbConnected={isDbConfigured}
+          onSetupDb={handleDbSetup}
+        />
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      </>
     );
   }
 
@@ -585,12 +748,13 @@ const App: React.FC = () => {
               </div>
               <p className="text-slate-600 dark:text-slate-300 mb-6">{t('login_subtitle')}</p>
               <div className="flex space-x-3">
-                <button onClick={() => setIsLogoutModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl font-medium">{t('cancel')}</button>
-                <button onClick={confirmLogout} className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold">{t('confirm')}</button>
+                <button onClick={() => setIsLogoutModalOpen(false)} className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 rounded-xl">{t('cancel')}</button>
+                <button onClick={confirmLogout} className="flex-1 py-3 bg-red-600 text-white rounded-xl">{t('confirm')}</button>
               </div>
             </div>
           </div>
         )}
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </>
     );
   }
@@ -673,6 +837,10 @@ const App: React.FC = () => {
         </div>
       </main>
       {availableUpdate && <UpdateBanner update={availableUpdate} onClose={() => setAvailableUpdate(null)} themeColor={storeSettings.themeColor || '#4f46e5'} />}
+      
+      {/* Toast Notification */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {isLogoutModalOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 dark:border-slate-700 animate-fade-in-up">

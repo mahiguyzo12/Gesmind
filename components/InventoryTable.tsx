@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { InventoryItem, Currency, User, Supplier } from '../types';
-import { Search, Plus, Trash2, Edit2, Filter, Loader2, Save, X, MapPin, Truck, Hash, Download, Package, DollarSign, TrendingUp, Calculator, Shield, Eye } from 'lucide-react';
+import { Search, Plus, Trash2, Edit2, Filter, Loader2, Save, X, MapPin, Truck, Hash, Download, Package, DollarSign, TrendingUp, Calculator, Shield, Eye, ChevronDown, FileText, FileSpreadsheet, File } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 import { generateItemDetails } from '../services/geminiService';
 
@@ -33,6 +33,9 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  
+  // Export Menu State
+  const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   // Form State
   const [itemName, setItemName] = useState('');
@@ -54,10 +57,6 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   const canViewProfit = currentUser?.permissions.includes('inventory.view_profit');
 
   // --- STRICT DATA FILTERING ---
-  // If Supervison -> Show Target's items.
-  // If Admin -> Show All.
-  // Else -> Show User's items.
-  
   const isSupervision = !!supervisionTarget;
   const targetId = supervisionTarget ? supervisionTarget.id : currentUser?.id;
 
@@ -103,7 +102,6 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
 
   const openEditModal = (item: InventoryItem) => {
     if(!canEdit) return;
-    // Sécurité supplémentaire : impossible d'éditer le produit d'un autre sauf si Admin
     if (!isAdmin && item.createdBy !== currentUser?.id) return;
 
     setEditingId(item.id);
@@ -112,7 +110,6 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     setItemCategory(item.category);
     setItemQuantity(item.quantity);
     setItemMin(item.minQuantity);
-    // Convert stored EUR price to current displayed currency for editing
     setItemPurchasePrice(parseFloat(((item.purchasePrice || 0) * currency.rate).toFixed(2)));
     setItemPrice(parseFloat((item.price * currency.rate).toFixed(2))); 
     setItemDesc(item.description);
@@ -183,7 +180,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         location: itemLocation || 'N/A',
         description: itemDesc,
         lastUpdated: new Date().toISOString(),
-        createdBy: currentUser?.id // Default owner, overridden in App.tsx if supervision
+        createdBy: currentUser?.id 
       };
       onAddItem(newItem);
     }
@@ -191,18 +188,18 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     resetForm();
   };
 
+  // --- EXPORT FUNCTIONS ---
+
   const handleExportCSV = () => {
-    const headers = ['ID', 'Nom', 'SKU', 'Catégorie', 'Quantité', `Prix Achat (${currency.code})`, `Prix Vente (${currency.code})`, `Marge Unit. (${currency.code})`, 'Fournisseur', 'Emplacement'];
+    const headers = ['Nom', 'SKU', 'Catégorie', 'Quantité', `Prix Achat (${currency.code})`, `Prix Vente (${currency.code})`, 'Fournisseur', 'Emplacement'];
     
     const rows = filteredItems.map(item => [
-      item.id,
       `"${item.name.replace(/"/g, '""')}"`,
       item.sku,
       item.category,
       item.quantity,
       ((item.purchasePrice || 0) * currency.rate).toFixed(2),
       (item.price * currency.rate).toFixed(2),
-      ((item.price - (item.purchasePrice || 0)) * currency.rate).toFixed(2),
       `"${item.supplier.replace(/"/g, '""')}"`,
       `"${item.location.replace(/"/g, '""')}"`,
     ]);
@@ -212,11 +209,87 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
       ...rows.map(row => row.join(','))
     ].join('\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    // Add Byte Order Mark for Excel UTF-8 compatibility
+    const blob = new Blob(["\ufeff", csvContent], { type: 'text/csv;charset=utf-8;' });
+    downloadFile(blob, `inventaire_${new Date().toISOString().split('T')[0]}.csv`);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportTXT = () => {
+    let txtContent = `RAPPORT D'INVENTAIRE - ${new Date().toLocaleDateString()}\n`;
+    txtContent += `Généré par Gesmind\n`;
+    txtContent += `=================================================\n\n`;
+
+    filteredItems.forEach(item => {
+        txtContent += `Produit: ${item.name} (${item.sku})\n`;
+        txtContent += `Catégorie: ${item.category} | Stock: ${item.quantity}\n`;
+        txtContent += `Prix Vente: ${(item.price * currency.rate).toFixed(2)} ${currency.code}\n`;
+        txtContent += `Fournisseur: ${item.supplier} | Emplacement: ${item.location}\n`;
+        txtContent += `-------------------------------------------------\n`;
+    });
+
+    const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8;' });
+    downloadFile(blob, `inventaire_${new Date().toISOString().split('T')[0]}.txt`);
+    setIsExportMenuOpen(false);
+  };
+
+  const handleExportWord = () => {
+    const tableRows = filteredItems.map(item => `
+      <tr>
+        <td>${item.name}</td>
+        <td>${item.sku}</td>
+        <td>${item.category}</td>
+        <td style="text-align:center">${item.quantity}</td>
+        <td style="text-align:right">${(item.price * currency.rate).toFixed(2)} ${currency.code}</td>
+        <td>${item.supplier}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+      <head>
+        <meta charset='utf-8'>
+        <title>Inventaire Export</title>
+        <style>
+          body { font-family: 'Arial', sans-serif; }
+          table { width: 100%; border-collapse: collapse; }
+          th { background-color: #f3f4f6; color: #1f2937; border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+          td { border: 1px solid #d1d5db; padding: 8px; }
+          h1 { color: #4f46e5; }
+        </style>
+      </head>
+      <body>
+        <h1>Liste des Stocks</h1>
+        <p>Date: ${new Date().toLocaleDateString()}</p>
+        <table>
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Ref</th>
+              <th>Catégorie</th>
+              <th>Qté</th>
+              <th>Prix</th>
+              <th>Fournisseur</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${tableRows}
+          </tbody>
+        </table>
+      </body>
+      </html>
+    `;
+
+    const blob = new Blob([htmlContent], { type: 'application/msword' });
+    downloadFile(blob, `inventaire_${new Date().toISOString().split('T')[0]}.doc`);
+    setIsExportMenuOpen(false);
+  };
+
+  const downloadFile = (blob: Blob, fileName: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `inventaire_stockmind_${new Date().toISOString().split('T')[0]}.csv`);
+    link.href = url;
+    link.download = fileName;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -230,6 +303,11 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
 
   return (
     <div className="space-y-4 animate-fade-in flex flex-col h-[85vh]">
+      {/* Backdrop for Menu closing */}
+      {isExportMenuOpen && (
+        <div className="fixed inset-0 z-20" onClick={() => setIsExportMenuOpen(false)}></div>
+      )}
+
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-2 flex-shrink-0">
         <div>
           <h2 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -241,15 +319,37 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
              )}
           </h2>
         </div>
-        <div className="flex items-center gap-2">
-           <button 
-              onClick={handleExportCSV}
-              className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium flex items-center transition-colors text-sm"
-              title="Exporter en CSV"
-            >
-              <Download className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Exporter</span>
-            </button>
+        <div className="flex items-center gap-2 relative">
+           
+           {/* EXPORT DROPDOWN */}
+           <div className="relative z-30">
+             <button 
+                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium flex items-center transition-colors text-sm"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline mr-1">Exporter</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              
+              {isExportMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-100 overflow-hidden animate-fade-in-up">
+                  <button onClick={handleExportCSV} className="w-full text-left px-4 py-3 hover:bg-emerald-50 hover:text-emerald-700 flex items-center transition-colors">
+                    <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" />
+                    <span className="text-sm font-medium">Excel (.csv)</span>
+                  </button>
+                  <button onClick={handleExportWord} className="w-full text-left px-4 py-3 hover:bg-blue-50 hover:text-blue-700 flex items-center transition-colors border-t border-slate-50">
+                    <FileText className="w-4 h-4 mr-2 text-blue-600" />
+                    <span className="text-sm font-medium">Word (.doc)</span>
+                  </button>
+                  <button onClick={handleExportTXT} className="w-full text-left px-4 py-3 hover:bg-slate-50 hover:text-slate-700 flex items-center transition-colors border-t border-slate-50">
+                    <File className="w-4 h-4 mr-2 text-slate-500" />
+                    <span className="text-sm font-medium">Texte (.txt)</span>
+                  </button>
+                </div>
+              )}
+           </div>
+
           {canAdd && (
             <button 
                 onClick={openAddModal}
@@ -542,7 +642,7 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
                       </span>
                     </div>
                     <div className="bg-white p-2 rounded-lg border border-slate-100">
-                      <span className="block text-indigo-500 text-xs mb-1">Vente Globale</span>
+                      <span className="block text-indigo-500 text-xs mb-1">Vente Global</span>
                       <span className="font-bold text-indigo-700">
                         {new Intl.NumberFormat('fr-FR', { style: 'currency', currency: currency.code }).format(totalBatchSale)}
                       </span>

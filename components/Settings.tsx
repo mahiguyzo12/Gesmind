@@ -2,8 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StoreSettings, User, BackupData, CloudProvider, AppUpdate, ThemeMode } from '../types';
 import { CURRENCIES, THEME_COLORS } from '../constants';
-import { checkForUpdates } from '../services/updateService';
-import { Settings as SettingsIcon, Globe, Store, Save, User as UserIcon, KeyRound, Database, Download, Upload, Cloud, CheckCircle, Smartphone, Github, RefreshCw, AlertCircle, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, X } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Store, Save, User as UserIcon, KeyRound, Database, Download, Upload, Cloud, CheckCircle, Smartphone, Github, RefreshCw, AlertCircle, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, X, Mail, Phone, Eye, EyeOff, Copy } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { db, setupFirebase } from '../src/firebaseConfig';
 
@@ -19,6 +18,19 @@ interface SettingsProps {
   onCloudSync: (provider: CloudProvider) => void;
   lang?: string;
 }
+
+const AVAILABLE_LANGUAGES = [
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'English' },
+  { code: 'es', label: 'Español' },
+  { code: 'de', label: 'Deutsch' },
+  { code: 'it', label: 'Italiano' },
+  { code: 'pt', label: 'Português' },
+  { code: 'zh', label: '中文 (Chinese)' },
+  { code: 'ja', label: '日本語 (Japanese)' },
+  { code: 'ar', label: 'العربية (Arabic)' },
+  { code: 'ru', label: 'Русский (Russian)' },
+];
 
 export const Settings: React.FC<SettingsProps> = ({ 
   currentSettings, 
@@ -46,15 +58,13 @@ export const Settings: React.FC<SettingsProps> = ({
   const [formData, setFormData] = useState(currentSettings);
   const [selectedCurrency, setSelectedCurrency] = useState(currentCurrency);
   const [isStoreSaved, setIsStoreSaved] = useState(false);
+  const [showRecoveryKey, setShowRecoveryKey] = useState(false);
   
-  // Update State
-  const [updateStatus, setUpdateStatus] = useState<AppUpdate | null>(null);
-  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
-  const [updateError, setUpdateError] = useState<string | null>(null);
-
   // Local state for User Profile
   const [userName, setUserName] = useState(currentUser.name);
   const [userPin, setUserPin] = useState(currentUser.pin);
+  const [userEmail, setUserEmail] = useState(currentUser.email || '');
+  const [userPhone, setUserPhone] = useState(currentUser.phone || '');
   const [isProfileSaved, setIsProfileSaved] = useState(false);
   
   // Firebase Config Modal
@@ -89,31 +99,13 @@ export const Settings: React.FC<SettingsProps> = ({
     
     onUpdateUser(currentUser.id, {
       name: userName,
-      pin: userPin
+      pin: userPin,
+      email: userEmail,
+      phone: userPhone
     });
 
     setIsProfileSaved(true);
     setTimeout(() => setIsProfileSaved(false), 3000);
-  };
-
-  const handleCheckUpdates = async () => {
-    if (!formData.githubRepo) {
-      setUpdateError("Veuillez d'abord configurer le dépôt GitHub.");
-      return;
-    }
-    
-    setIsCheckingUpdate(true);
-    setUpdateError(null);
-    setUpdateStatus(null);
-
-    try {
-      const update = await checkForUpdates(formData.githubRepo);
-      setUpdateStatus(update);
-    } catch (err: any) {
-      setUpdateError(err.message || "Erreur lors de la vérification.");
-    } finally {
-      setIsCheckingUpdate(false);
-    }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -151,6 +143,26 @@ export const Settings: React.FC<SettingsProps> = ({
        setFormData({...formData, logoUrl: base64});
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleRegenerateKey = () => {
+      const confirmMsg = formData.recoveryKey 
+        ? "Régénérer la clé invalidera l'ancienne. Continuer ?" 
+        : "Générer une nouvelle clé de secours ?";
+        
+      if (window.confirm(confirmMsg)) {
+          const newKey = 'REC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+          setFormData(prev => ({...prev, recoveryKey: newKey}));
+          // Auto-save to ensure it persists immediately
+          onUpdateSettings({...formData, recoveryKey: newKey});
+      }
+  };
+
+  const copyKey = () => {
+      if (formData.recoveryKey) {
+          navigator.clipboard.writeText(formData.recoveryKey);
+          alert("Clé copiée !");
+      }
   };
 
   const handleSaveFirebaseConfig = () => {
@@ -268,6 +280,34 @@ export const Settings: React.FC<SettingsProps> = ({
                     maxLength={4}
                     pattern="\d{4}"
                     className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 font-mono tracking-widest bg-white dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+                
+                {/* NEW FIELDS FOR EMAIL AND PHONE */}
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                    <Mail className="w-4 h-4 mr-1 text-slate-400" />
+                    Email Personnel
+                  </label>
+                  <input
+                    type="email"
+                    value={userEmail}
+                    onChange={(e) => setUserEmail(e.target.value)}
+                    placeholder="user@example.com"
+                    className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white dark:bg-slate-700 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                    <Phone className="w-4 h-4 mr-1 text-slate-400" />
+                    Téléphone Personnel
+                  </label>
+                  <input
+                    type="tel"
+                    value={userPhone}
+                    onChange={(e) => setUserPhone(e.target.value)}
+                    placeholder="+33 6..."
+                    className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white dark:bg-slate-700 dark:text-white"
                   />
                 </div>
               </div>
@@ -389,6 +429,60 @@ export const Settings: React.FC<SettingsProps> = ({
                    </div>
                 </div>
 
+                {/* SECURITY & ACCESS (RECOVERY KEY) */}
+                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800">
+                    <label className="block text-sm font-bold text-amber-900 dark:text-amber-400 mb-3 flex items-center">
+                        <KeyRound className="w-4 h-4 mr-2" />
+                        Sécurité & Accès
+                    </label>
+                    <div className="space-y-2">
+                        <label className="text-xs text-amber-800 dark:text-amber-300 font-medium">Clé de Récupération (Admin)</label>
+                        <div className="flex gap-2">
+                            <div className="flex-1 relative">
+                                <input 
+                                    type={showRecoveryKey ? "text" : "password"} 
+                                    readOnly
+                                    value={formData.recoveryKey || ''}
+                                    placeholder={!formData.recoveryKey ? "Non générée - Cliquez sur Générer" : ""}
+                                    className="w-full px-3 py-2 border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-300 font-mono"
+                                />
+                                <button
+                                    type="button" 
+                                    onClick={() => setShowRecoveryKey(!showRecoveryKey)}
+                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    disabled={!formData.recoveryKey}
+                                >
+                                    {showRecoveryKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                </button>
+                            </div>
+                            {formData.recoveryKey && (
+                                <button 
+                                    type="button"
+                                    onClick={copyKey}
+                                    className="bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-700 p-2 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-600 text-amber-700 dark:text-amber-400 transition-colors"
+                                    title="Copier"
+                                >
+                                    <Copy className="w-4 h-4" />
+                                </button>
+                            )}
+                            <button 
+                                type="button"
+                                onClick={handleRegenerateKey}
+                                className={`bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-700 p-2 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-600 transition-colors ${!formData.recoveryKey ? 'w-auto px-4 flex items-center text-xs font-bold' : ''}`}
+                                title={formData.recoveryKey ? "Régénérer" : "Générer Clé"}
+                            >
+                                <RefreshCw className={`w-4 h-4 ${!formData.recoveryKey ? 'mr-2' : ''}`} />
+                                {!formData.recoveryKey ? "Générer" : ""}
+                            </button>
+                        </div>
+                        <p className="text-[10px] text-amber-700 dark:text-amber-500 mt-1">
+                            {formData.recoveryKey 
+                                ? "Cette clé sert à réinitialiser le code PIN admin si nécessaire."
+                                : "Aucune clé de récupération n'est définie. Veuillez en générer une maintenant."}
+                        </p>
+                    </div>
+                </div>
+
                 {/* AI Configuration Status */}
                 <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start space-x-4">
                   <div className="bg-white dark:bg-indigo-900 p-2 rounded-lg shadow-sm">
@@ -400,65 +494,6 @@ export const Settings: React.FC<SettingsProps> = ({
                        {t('ai_ready')}
                      </p>
                   </div>
-                </div>
-
-                {/* Software Updates (GitHub) */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
-                   <label className="block text-sm font-bold mb-2 flex items-center">
-                     <Github className="w-4 h-4 mr-2" />
-                     {t('software_update')}
-                   </label>
-                   
-                   <div className="flex gap-2 mb-3">
-                      <input 
-                        type="text"
-                        value={formData.githubRepo || ''}
-                        onChange={(e) => setFormData({...formData, githubRepo: e.target.value})}
-                        placeholder="Format: username/repository"
-                        className="flex-1 px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800"
-                      />
-                      <button 
-                        type="button"
-                        onClick={handleCheckUpdates}
-                        disabled={isCheckingUpdate || !formData.githubRepo}
-                        className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-900 flex items-center disabled:opacity-70"
-                      >
-                        <RefreshCw className={`w-4 h-4 mr-2 ${isCheckingUpdate ? 'animate-spin' : ''}`} />
-                        {t('check_update')}
-                      </button>
-                   </div>
-
-                   {updateError && (
-                     <div className="text-xs text-red-600 flex items-center bg-red-50 p-2 rounded">
-                       <AlertCircle className="w-3 h-3 mr-1" /> {updateError}
-                     </div>
-                   )}
-
-                   {updateStatus && (
-                     <div className={`p-3 rounded-lg border text-sm ${updateStatus.hasUpdate ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-100 border-slate-200'}`}>
-                       {updateStatus.hasUpdate ? (
-                         <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                               <span className="font-bold text-emerald-800">Nouvelle version disponible : {updateStatus.latestVersion}</span>
-                            </div>
-                            <p className="text-xs text-slate-600">{updateStatus.releaseNotes.substring(0, 100)}...</p>
-                            <a 
-                              href={updateStatus.downloadUrl} 
-                              target="_blank" 
-                              rel="noreferrer"
-                              className="block w-full text-center bg-emerald-600 text-white py-2 rounded-lg font-bold text-xs hover:bg-emerald-700"
-                            >
-                              Télécharger la mise à jour
-                            </a>
-                         </div>
-                       ) : (
-                         <div className="flex items-center text-slate-600">
-                           <CheckCircle className="w-4 h-4 mr-2 text-slate-500" />
-                           Votre application est à jour (v{updateStatus.currentVersion})
-                         </div>
-                       )}
-                     </div>
-                   )}
                 </div>
 
                 <div>
@@ -483,9 +518,9 @@ export const Settings: React.FC<SettingsProps> = ({
                       onChange={(e) => setFormData({...formData, language: e.target.value})}
                       className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700"
                     >
-                      <option value="fr">Français</option>
-                      <option value="en">English</option>
-                      <option value="es">Español</option>
+                      {AVAILABLE_LANGUAGES.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -567,14 +602,6 @@ export const Settings: React.FC<SettingsProps> = ({
                    ? "Votre application est synchronisée en temps réel avec le cloud Google Firebase. Vos données sont sécurisées."
                    : "L'application fonctionne actuellement sans serveur. Les données ne sont pas partagées entre les appareils."}
                </p>
-
-               <button 
-                 onClick={() => setIsDbModalOpen(true)}
-                 className="bg-slate-800 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-900 flex items-center"
-               >
-                 <Link className="w-4 h-4 mr-2" />
-                 Configurer le Serveur de Données
-               </button>
             </div>
 
             {/* Cloud Connectors */}

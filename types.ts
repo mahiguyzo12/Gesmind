@@ -47,6 +47,7 @@ export interface StoreSettings {
   phone: string;
   email: string;
   logoUrl?: string; // Base64 string du logo
+  recoveryKey?: string; // Clé de secours pour l'admin
   language: string;
   lastCloudSync?: string;
   cloudProvider?: CloudProvider;
@@ -137,6 +138,8 @@ export interface User {
   role: UserRole;
   pin: string; // Code PIN
   avatar?: string;
+  email?: string; // Contact direct utilisateur
+  phone?: string; // Contact direct utilisateur
   commissionRate?: number; // Pourcentage de commission sur les ventes (lié au compte vendeur)
   permissions: string[]; // Liste des IDs de permission (ex: 'inventory.view', 'inventory.add')
   lastLogin?: string; // Timestamp de la dernière connexion

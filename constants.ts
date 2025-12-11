@@ -174,11 +174,59 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
 export const CATEGORIES = ['Électronique', 'Mobilier', 'Accessoires', 'Bureautique', 'Réseau', 'Autre'];
 
 export const CURRENCIES: Record<string, Currency> = {
+  // Europe
   EUR: { code: 'EUR', label: 'Euro', symbol: '€', rate: 1 },
-  XOF: { code: 'XOF', label: 'Franc CFA', symbol: 'F CFA', rate: 655.957 }, // Taux fixe EUR/XOF
-  USD: { code: 'USD', label: 'US Dollar', symbol: '$', rate: 1.08 },
   GBP: { code: 'GBP', label: 'Livre Sterling', symbol: '£', rate: 0.85 },
-  CAD: { code: 'CAD', label: 'Dollar Canadien', symbol: 'CA$', rate: 1.48 }
+  CHF: { code: 'CHF', label: 'Franc Suisse', symbol: 'CHF', rate: 0.95 },
+  SEK: { code: 'SEK', label: 'Couronne Suédoise', symbol: 'kr', rate: 11.2 },
+  NOK: { code: 'NOK', label: 'Couronne Norvégienne', symbol: 'kr', rate: 11.4 },
+  DKK: { code: 'DKK', label: 'Couronne Danoise', symbol: 'kr', rate: 7.45 },
+  PLN: { code: 'PLN', label: 'Złoty Polonais', symbol: 'zł', rate: 4.3 },
+  HUF: { code: 'HUF', label: 'Forint Hongrois', symbol: 'Ft', rate: 385 },
+  CZK: { code: 'CZK', label: 'Couronne Tchèque', symbol: 'Kč', rate: 24.5 },
+  RON: { code: 'RON', label: 'Leu Roumain', symbol: 'lei', rate: 4.97 },
+  RUB: { code: 'RUB', label: 'Rouble Russe', symbol: '₽', rate: 98.5 },
+  TRY: { code: 'TRY', label: 'Lire Turque', symbol: '₺', rate: 33.5 },
+
+  // Amériques
+  USD: { code: 'USD', label: 'Dollar Américain', symbol: '$', rate: 1.08 },
+  CAD: { code: 'CAD', label: 'Dollar Canadien', symbol: 'CA$', rate: 1.48 },
+  MXN: { code: 'MXN', label: 'Peso Mexicain', symbol: 'Mex$', rate: 18.5 },
+  BRL: { code: 'BRL', label: 'Réal Brésilien', symbol: 'R$', rate: 5.35 },
+  ARS: { code: 'ARS', label: 'Peso Argentin', symbol: '$', rate: 900 },
+  CLP: { code: 'CLP', label: 'Peso Chilien', symbol: '$', rate: 990 },
+  COP: { code: 'COP', label: 'Peso Colombien', symbol: '$', rate: 4200 },
+  PEN: { code: 'PEN', label: 'Sol Péruvien', symbol: 'S/', rate: 4.05 },
+
+  // Asie & Pacifique
+  CNY: { code: 'CNY', label: 'Yuan Chinois', symbol: '¥', rate: 7.8 },
+  JPY: { code: 'JPY', label: 'Yen Japonais', symbol: '¥', rate: 163 },
+  INR: { code: 'INR', label: 'Roupie Indienne', symbol: '₹', rate: 90 },
+  KRW: { code: 'KRW', label: 'Won Sud-Coréen', symbol: '₩', rate: 1450 },
+  AUD: { code: 'AUD', label: 'Dollar Australien', symbol: 'A$', rate: 1.65 },
+  NZD: { code: 'NZD', label: 'Dollar Néo-Zélandais', symbol: 'NZ$', rate: 1.78 },
+  SGD: { code: 'SGD', label: 'Dollar de Singapour', symbol: 'S$', rate: 1.45 },
+  HKD: { code: 'HKD', label: 'Dollar de Hong Kong', symbol: 'HK$', rate: 8.45 },
+  IDR: { code: 'IDR', label: 'Roupie Indonésienne', symbol: 'Rp', rate: 17000 },
+  MYR: { code: 'MYR', label: 'Ringgit Malaisien', symbol: 'RM', rate: 5.15 },
+  PHP: { code: 'PHP', label: 'Peso Philippin', symbol: '₱', rate: 60.5 },
+  THB: { code: 'THB', label: 'Baht Thaïlandais', symbol: '฿', rate: 39.5 },
+  VND: { code: 'VND', label: 'Dong Vietnamien', symbol: '₫', rate: 26500 },
+
+  // Afrique & Moyen-Orient
+  XOF: { code: 'XOF', label: 'Franc CFA (UEMOA)', symbol: 'F CFA', rate: 655.957 },
+  XAF: { code: 'XAF', label: 'Franc CFA (CEMAC)', symbol: 'F CFA', rate: 655.957 },
+  MAD: { code: 'MAD', label: 'Dirham Marocain', symbol: 'DH', rate: 10.8 },
+  DZD: { code: 'DZD', label: 'Dinar Algérien', symbol: 'DA', rate: 145 },
+  TND: { code: 'TND', label: 'Dinar Tunisien', symbol: 'DT', rate: 3.35 },
+  EGP: { code: 'EGP', label: 'Livre Égyptienne', symbol: 'E£', rate: 33.5 },
+  NGN: { code: 'NGN', label: 'Naira Nigérian', symbol: '₦', rate: 1600 },
+  ZAR: { code: 'ZAR', label: 'Rand Sud-Africain', symbol: 'R', rate: 20.5 },
+  KES: { code: 'KES', label: 'Shilling Kényan', symbol: 'KSh', rate: 145 },
+  GHS: { code: 'GHS', label: 'Cedi Ghanéen', symbol: 'GH₵', rate: 13.5 },
+  AED: { code: 'AED', label: 'Dirham EAU', symbol: 'dh', rate: 4.0 },
+  SAR: { code: 'SAR', label: 'Riyal Saoudien', symbol: '﷼', rate: 4.05 },
+  ILS: { code: 'ILS', label: 'Shekel Israélien', symbol: '₪', rate: 4.0 },
 };
 
 export const THEME_COLORS = [
