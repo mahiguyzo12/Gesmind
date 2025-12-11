@@ -4,7 +4,7 @@ import { InventoryItem, GeneratedItemData, Currency } from "../types";
 
 // Initialisation avec la librairie standard et la clé injectée via Vite
 // La clé est définie dans vite.config.ts (process.env.API_KEY)
-const genAI = new GoogleGenerativeAI(process.env.API_KEY as string);
+const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
 
 /**
  * Analyzes the current inventory to provide insights, alerts, and suggestions.
@@ -12,8 +12,6 @@ const genAI = new GoogleGenerativeAI(process.env.API_KEY as string);
 export const analyzeStock = async (inventory: InventoryItem[], currency: Currency): Promise<any> => {
   try {
     // Utilisation du modèle gemini-2.5-flash, plus récent et recommandé
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     // Convert prices to selected currency for the prompt context
     const inventorySummary = JSON.stringify(inventory.map(item => ({
       name: item.name,
@@ -43,9 +41,10 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
         Données: ${inventorySummary}
       `;
 
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    const text = response.text() || "";
     
     // Nettoyage au cas où le modèle renvoie quand même du markdown
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -62,8 +61,6 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
  */
 export const generateItemDetails = async (itemName: string): Promise<GeneratedItemData> => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const prompt = `
       Génère des données de stock réalistes pour un produit nommé : "${itemName}".
       
@@ -79,9 +76,10 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
       Note: suggestedPrice doit être un nombre en EUROS.
     `;
 
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    const text = response.text();
+    const text = response.text() || "";
 
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
@@ -97,8 +95,6 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
  */
 export const generateStoreLogo = async (storeName: string, description?: string): Promise<string> => {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const userDesc = description ? `Style/Description souhaitée : "${description}".` : "Style : Moderne, Minimaliste, Professionnel.";
 
     const prompt = `
@@ -114,9 +110,10 @@ export const generateStoreLogo = async (storeName: string, description?: string)
       RÉPONDS UNIQUEMENT AVEC LE CODE SVG BRUT. Pas de markdown (pas de \`\`\`), pas de texte avant ou après. Juste <svg>...</svg>.
     `;
 
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let svgText = response.text();
+    let svgText = response.text() || "";
 
     // Nettoyage agressif du markdown
     svgText = svgText.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();

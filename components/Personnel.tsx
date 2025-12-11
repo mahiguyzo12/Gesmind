@@ -115,8 +115,8 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
   }, [employees]);
 
   // Filtered lists for combobox
-  const filteredTitles = suggestions.titles.filter(t => t.toLowerCase().includes(jobTitle.toLowerCase()));
-  const filteredDepts = suggestions.departments.filter(d => d.toLowerCase().includes(department.toLowerCase()));
+  const filteredTitles = suggestions.titles.filter(t => t && t.toLowerCase().includes(jobTitle.toLowerCase()));
+  const filteredDepts = suggestions.departments.filter(d => d && d.toLowerCase().includes(department.toLowerCase()));
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -226,11 +226,12 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
     if (editingId) {
         onUpdateEmployee(editingId, data);
     } else {
-        onAddEmployee({
+        const newEmp: Employee = {
+            ...data as Employee,
             id: `emp-${Date.now()}`,
-            documents: [],
-            ...data as Employee
-        });
+            documents: []
+        };
+        onAddEmployee(newEmp);
     }
     setIsModalOpen(false);
   };
@@ -546,7 +547,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                             filteredTitles.map(t => (
                                                 <div 
                                                     key={t}
-                                                    onClick={() => { setJobTitle(t); setShowTitleSuggestions(false); }}
+                                                    onClick={() => { setJobTitle(t || ''); setShowTitleSuggestions(false); }}
                                                     className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-slate-700"
                                                 >
                                                     {t}
@@ -580,7 +581,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                             filteredDepts.map(d => (
                                                 <div 
                                                     key={d}
-                                                    onClick={() => { setDepartment(d); setShowDeptSuggestions(false); }}
+                                                    onClick={() => { setDepartment(d || ''); setShowDeptSuggestions(false); }}
                                                     className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-slate-700"
                                                 >
                                                     {d}

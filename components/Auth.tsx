@@ -402,26 +402,27 @@ export const Auth: React.FC<AuthProps> = ({
         )}
       </div>
       
-      {/* Footer avec Liens */}
-      <div className="mt-8 w-full max-w-md flex justify-between items-center text-xs text-slate-500 px-2">
-        {availableStores.length > 0 ? (
-          <button 
-            onClick={() => setIsDeleteOpen(true)}
-            className="flex items-center text-slate-500 hover:text-red-400 font-medium transition-colors group"
-          >
-            <Trash2 className="w-3 h-3 mr-1.5" />
-            {t('delete_store')}
-          </button>
-        ) : <div></div>}
-        
+      {/* Footer avec Lien Création */}
+      <div className="mt-8 w-full max-w-md flex justify-end px-4 z-10">
         <button 
           onClick={() => setIsSetupOpen(true)}
-          className="flex items-center text-teal-400 hover:text-teal-300 font-medium transition-colors group"
+          className="flex items-center text-teal-400 hover:text-teal-300 font-medium transition-colors py-2 px-3 hover:bg-white/5 rounded-lg border border-teal-900/30"
         >
-          <PlusCircle className="w-4 h-4 mr-1.5 group-hover:scale-110 transition-transform" />
+          <PlusCircle className="w-4 h-4 mr-2" />
           {t('create_other_store')}
         </button>
       </div>
+
+      {/* BOUTON SUPPRESSION ENTREPRISE (BAS GAUCHE ABSOLU) */}
+      {currentStoreId && (
+        <button 
+          onClick={() => setIsDeleteOpen(true)}
+          className="absolute bottom-6 left-6 flex items-center text-[10px] text-slate-600 hover:text-red-400 font-medium transition-colors group opacity-50 hover:opacity-100 z-20"
+        >
+          <Trash2 className="w-3 h-3 mr-1.5" />
+          {t('delete_store')}
+        </button>
+      )}
 
       {/* MODAL CRÉATION ENTREPRISE (ÉTAPE 1) */}
       {isSetupOpen && (

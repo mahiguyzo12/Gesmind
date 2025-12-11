@@ -21,7 +21,7 @@ import { CURRENCIES, PERMISSION_CATEGORIES } from './constants';
 import { checkForUpdates } from './services/updateService';
 import { LogOut, WifiOff, Eye, X } from 'lucide-react';
 import { getTranslation } from './translations';
-import { db, setupFirebase } from './firebaseConfig';
+import { db, setupFirebase } from './src/firebaseConfig';
 
 // Import Firestore Service
 import { 
@@ -42,7 +42,7 @@ import {
   updateData,
   deleteData,
   updateSettingsInDB
-} from './services/firestoreService';
+} from './src/services/firestoreService';
 
 const DEFAULT_SETTINGS: StoreSettings = {
   name: 'Gesmind',

@@ -5,7 +5,7 @@ import { CURRENCIES, THEME_COLORS } from '../constants';
 import { checkForUpdates } from '../services/updateService';
 import { Settings as SettingsIcon, Globe, Store, Save, User as UserIcon, KeyRound, Database, Download, Upload, Cloud, CheckCircle, Smartphone, Github, RefreshCw, AlertCircle, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, X } from 'lucide-react';
 import { getTranslation } from '../translations';
-import { db, setupFirebase } from '../firebaseConfig';
+import { db, setupFirebase } from '../src/firebaseConfig';
 
 interface SettingsProps {
   currentSettings: StoreSettings;

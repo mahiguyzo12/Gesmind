@@ -157,10 +157,11 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
     if (editingId) {
       onUpdateUser(editingId, userData);
     } else {
-      onAddUser({
-        id: `u-${Date.now()}`,
-        ...userData as User
-      });
+      const newUser: User = {
+        ...userData as User,
+        id: `u-${Date.now()}`
+      };
+      onAddUser(newUser);
     }
     
     setIsModalOpen(false);
