@@ -3,7 +3,6 @@ import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Employee, Currency, EmployeeDocument } from '../types';
 import { Briefcase, Phone, Mail, Calendar, Banknote, User as UserIcon, FileText, Upload, Trash2, Eye, X, Plus, Edit2, MapPin, Image as ImageIcon, Wallet, Heart, Baby, Home, AlertCircle, ChevronDown, CheckCircle } from 'lucide-react';
 
-// --- CONSTANTS GLOBALES POUR LES LISTES ---
 const DEFAULT_JOB_TITLES = [
     'Directeur Général', 'Directeur Commercial', 'Directeur Financier', 'Directeur RH',
     'Manager', 'Chef d\'équipe', 'Superviseur',
@@ -40,19 +39,16 @@ interface PersonnelProps {
 }
 
 export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAddEmployee, onUpdateEmployee, onDeleteEmployee, onPaySalary }) => {
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); // YYYY-MM
+  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7)); 
   
-  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
-  // Payment Modal State
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [payEmployee, setPayEmployee] = useState<Employee | null>(null);
   const [payBonus, setPayBonus] = useState(0);
   const [payMonth, setPayMonth] = useState('');
 
-  // Form State - Professionnel
   const [fullName, setFullName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [department, setDepartment] = useState('');
@@ -63,23 +59,19 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
   const [hireDate, setHireDate] = useState(new Date().toISOString().split('T')[0]);
   const [photo, setPhoto] = useState<string | undefined>(undefined);
 
-  // Form State - Personnel
   const [gender, setGender] = useState<'M' | 'F'>('M');
   const [birthDate, setBirthDate] = useState('');
   const [residence, setResidence] = useState('');
   const [childrenCount, setChildrenCount] = useState(0);
   const [maritalStatus, setMaritalStatus] = useState<'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED'>('SINGLE');
 
-  // Form State - Emergency Contact
   const [emergencyName, setEmergencyName] = useState('');
   const [emergencyRelation, setEmergencyRelation] = useState('');
   const [emergencyPhone, setEmergencyPhone] = useState('');
   
-  // Suggestions State (Custom Combobox)
   const [showTitleSuggestions, setShowTitleSuggestions] = useState(false);
   const [showDeptSuggestions, setShowDeptSuggestions] = useState(false);
   
-  // Doc Management
   const [selectedEmpForDocs, setSelectedEmpForDocs] = useState<Employee | null>(null);
   const [newDocType, setNewDocType] = useState('CONTRACT');
   const [newDocName, setNewDocName] = useState('');
@@ -89,7 +81,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
   const titleWrapperRef = useRef<HTMLDivElement>(null);
   const deptWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdowns when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (titleWrapperRef.current && !titleWrapperRef.current.contains(event.target as Node)) {
@@ -103,7 +94,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // --- Dynamic Options Calculation ---
   const suggestions = useMemo(() => {
     const existingTitles = employees.map(e => e.jobTitle).filter(Boolean);
     const existingDepts = employees.map(e => e.department).filter(Boolean);
@@ -114,7 +104,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
     };
   }, [employees]);
 
-  // Filtered lists for combobox
   const filteredTitles = suggestions.titles.filter(t => t && t.toLowerCase().includes(jobTitle.toLowerCase()));
   const filteredDepts = suggestions.departments.filter(d => d && d.toLowerCase().includes(department.toLowerCase()));
 
@@ -139,7 +128,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
     setHireDate(new Date().toISOString().split('T')[0]);
     setPhoto(undefined);
     
-    // Reset Personals
     setGender('M');
     setBirthDate('');
     setResidence('');
@@ -167,7 +155,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
     setHireDate(emp.hireDate);
     setPhoto(emp.photo);
 
-    // Set Personals
     setGender(emp.gender || 'M');
     setBirthDate(emp.birthDate || '');
     setResidence(emp.residence || '');
@@ -284,11 +271,10 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
       }
   };
 
-  // --- PAY SALARY LOGIC ---
   const openPayModal = (emp: Employee) => {
       setPayEmployee(emp);
       setPayBonus(0);
-      setPayMonth(selectedMonth); // Default to current global selection
+      setPayMonth(selectedMonth); 
       setIsPayModalOpen(true);
   };
 
@@ -302,7 +288,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
       
       setIsPayModalOpen(false);
       setPayEmployee(null);
-      // Optional: Add toast or alert here
       alert(`Salaire de ${payEmployee.fullName} enregistré !`);
   };
 
@@ -341,7 +326,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
         {employees.map(emp => {
             return (
                 <div key={emp.id} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex flex-col group relative">
-                    {/* Header Card */}
                     <div className="p-6 flex items-start space-x-4">
                         <div className="relative cursor-pointer" onClick={() => setSelectedEmpForDocs(emp)}>
                             <img src={emp.photo || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.fullName)}&background=random&color=fff`} alt={emp.fullName} className="w-16 h-16 rounded-full object-cover border-2 border-slate-100" />
@@ -375,7 +359,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                         </button>
                     </div>
 
-                    {/* Salary Actions */}
                     <div className="bg-slate-50 p-4 border-t border-slate-100 flex items-center justify-between">
                         <div className="flex flex-col">
                             <span className="text-xs text-slate-500 font-bold uppercase">Salaire Fixe</span>
@@ -442,7 +425,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                   <input 
                                       type="number" 
                                       min="0"
-                                      className="w-full px-2 py-1 text-right border border-indigo-200 rounded bg-white font-medium focus:ring-1 focus:ring-indigo-500"
+                                      className="w-full px-2 py-1 text-right border border-indigo-200 rounded bg-white font-medium focus:ring-1 focus:ring-indigo-500 text-slate-900"
                                       value={payBonus}
                                       onChange={e => setPayBonus(parseFloat(e.target.value) || 0)}
                                   />
@@ -472,7 +455,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
           </div>
       )}
 
-      {/* CREATE / EDIT EMPLOYEE MODAL (Existing code...) */}
+      {/* CREATE / EDIT EMPLOYEE MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in-up my-8 max-h-[90vh] overflow-y-auto">
@@ -494,7 +477,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                             <input 
                                 type="text" 
                                 required
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-900"
                                 value={fullName}
                                 onChange={e => setFullName(e.target.value)}
                             />
@@ -532,7 +515,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                     <input 
                                         type="text" 
                                         required
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg pr-8"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg pr-8 bg-white text-slate-900"
                                         value={jobTitle}
                                         onChange={e => { setJobTitle(e.target.value); setShowTitleSuggestions(true); }}
                                         onFocus={() => setShowTitleSuggestions(true)}
@@ -566,7 +549,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <div className="relative">
                                     <input 
                                         type="text"
-                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg pr-8"
+                                        className="w-full px-3 py-2 border border-slate-200 rounded-lg pr-8 bg-white text-slate-900"
                                         value={department}
                                         onChange={e => { setDepartment(e.target.value); setShowDeptSuggestions(true); }}
                                         onFocus={() => setShowDeptSuggestions(true)}
@@ -606,7 +589,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                             <input 
                                 type="number" 
                                 min="0"
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-lg font-bold"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-lg font-bold bg-white text-slate-900"
                                 value={baseSalary}
                                 onChange={e => setBaseSalary(parseFloat(e.target.value))}
                             />
@@ -615,7 +598,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                             <label className="block text-sm font-medium text-slate-700 mb-1">Date d'embauche</label>
                             <input 
                                 type="date" 
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                 value={hireDate}
                                 onChange={e => setHireDate(e.target.value)}
                             />
@@ -635,7 +618,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Sexe</label>
                                 <select 
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                     value={gender}
                                     onChange={e => setGender(e.target.value as 'M' | 'F')}
                                 >
@@ -647,7 +630,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Date de Naissance</label>
                                 <input 
                                     type="date"
-                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                     value={birthDate}
                                     onChange={e => setBirthDate(e.target.value)}
                                 />
@@ -657,7 +640,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                          <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Situation</label>
                             <select 
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                 value={maritalStatus}
                                 onChange={e => setMaritalStatus(e.target.value as any)}
                             >
@@ -676,7 +659,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                     <input 
                                         type="number"
                                         min="0"
-                                        className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg"
+                                        className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                         value={childrenCount}
                                         onChange={e => setChildrenCount(parseInt(e.target.value) || 0)}
                                     />
@@ -688,7 +671,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                     <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                     <input 
                                         type="text" 
-                                        className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg"
+                                        className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                         value={residence}
                                         onChange={e => setResidence(e.target.value)}
                                         placeholder="Quartier, Ville"
@@ -702,7 +685,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input 
                                     type="text" 
-                                    className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg"
+                                    className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                     value={phone}
                                     onChange={e => setPhone(e.target.value)}
                                     placeholder="Téléphone"
@@ -712,7 +695,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                                 <input 
                                     type="email" 
-                                    className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg"
+                                    className="w-full pl-9 px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                     value={email}
                                     onChange={e => setEmail(e.target.value)}
                                     placeholder="Email"
@@ -730,7 +713,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                             <label className="block text-xs font-bold text-red-800 mb-1">Nom du contact</label>
                             <input 
                                 type="text" 
-                                className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white"
+                                className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white text-slate-900"
                                 value={emergencyName}
                                 onChange={e => setEmergencyName(e.target.value)}
                                 placeholder="Nom complet"
@@ -741,7 +724,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <label className="block text-xs font-bold text-red-800 mb-1">Lien de parenté</label>
                                 <input 
                                     type="text" 
-                                    className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white"
+                                    className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white text-slate-900"
                                     value={emergencyRelation}
                                     onChange={e => setEmergencyRelation(e.target.value)}
                                     placeholder="Epouse, Père..."
@@ -751,7 +734,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 <label className="block text-xs font-bold text-red-800 mb-1">Téléphone</label>
                                 <input 
                                     type="text" 
-                                    className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white"
+                                    className="w-full px-3 py-2 border border-red-200 rounded-lg bg-white text-slate-900"
                                     value={emergencyPhone}
                                     onChange={e => setEmergencyPhone(e.target.value)}
                                     placeholder="Numéro"
@@ -773,7 +756,6 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
         </div>
       )}
 
-      {/* DOCUMENT MODAL */}
       {selectedEmpForDocs && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl p-6 animate-fade-in-up">
@@ -848,7 +830,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                               <select 
                                 value={newDocType} 
                                 onChange={e => setNewDocType(e.target.value)}
-                                className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white"
+                                className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-900"
                               >
                                   <option value="CONTRACT">Contrat</option>
                                   <option value="ID">Pièce d'identité</option>
@@ -861,7 +843,7 @@ export const Personnel: React.FC<PersonnelProps> = ({ employees, currency, onAdd
                                 placeholder="Nom du fichier..."
                                 value={newDocName}
                                 onChange={e => setNewDocName(e.target.value)}
-                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm"
+                                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-900"
                               />
                               <button 
                                 onClick={() => fileInputRef.current?.click()}

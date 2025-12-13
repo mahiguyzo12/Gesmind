@@ -4,12 +4,15 @@ import { InventoryItem, GeneratedItemData, Currency } from "../types";
 
 // Initialisation avec la librairie standard et la clé injectée via Vite
 // La clé est définie dans vite.config.ts (process.env.API_KEY)
-const genAI = new GoogleGenerativeAI(process.env.API_KEY || "");
+const API_KEY = process.env.API_KEY || "";
+const genAI = new GoogleGenerativeAI(API_KEY);
 
 /**
  * Analyzes the current inventory to provide insights, alerts, and suggestions.
  */
 export const analyzeStock = async (inventory: InventoryItem[], currency: Currency): Promise<any> => {
+  if (!API_KEY) throw new Error("Clé API Gemini manquante. Vérifiez la configuration du build.");
+
   try {
     // Utilisation du modèle gemini-2.5-flash, plus récent et recommandé
     // Convert prices to selected currency for the prompt context
@@ -50,9 +53,9 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     return JSON.parse(cleanJson);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erreur Gemini Analysis:", error);
-    throw error;
+    throw new Error(error.message || "Erreur lors de l'analyse IA");
   }
 };
 
@@ -60,6 +63,8 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
  * Generates details (category, description, price estimate) for a new item name.
  */
 export const generateItemDetails = async (itemName: string): Promise<GeneratedItemData> => {
+  if (!API_KEY) throw new Error("Clé API Gemini manquante.");
+
   try {
     const prompt = `
       Génère des données de stock réalistes pour un produit nommé : "${itemName}".
@@ -84,9 +89,9 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return JSON.parse(cleanJson);
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erreur Gemini Generation:", error);
-    throw error;
+    throw new Error(error.message || "Erreur génération détails");
   }
 };
 
@@ -94,6 +99,8 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
  * Generates an SVG Logo based on the store name and optional description.
  */
 export const generateStoreLogo = async (storeName: string, description?: string): Promise<string> => {
+  if (!API_KEY) throw new Error("Clé API Gemini manquante.");
+
   try {
     const userDesc = description ? `Style/Description souhaitée : "${description}".` : "Style : Moderne, Minimaliste, Professionnel.";
 
@@ -124,12 +131,15 @@ export const generateStoreLogo = async (storeName: string, description?: string)
        const endIndex = svgText.lastIndexOf('</svg>');
        if (startIndex !== -1 && endIndex !== -1) {
          svgText = svgText.substring(startIndex, endIndex + 6);
+       } else {
+         throw new Error("Le format généré n'est pas un SVG valide.");
        }
     }
 
     return svgText;
-  } catch (error) {
+  } catch (error: any) {
     console.error("Erreur Gemini Logo Generation:", error);
-    throw error;
+    // On propage le message d'erreur précis pour l'affichage dans l'UI
+    throw new Error(error.message || "Erreur de génération du logo");
   }
 };

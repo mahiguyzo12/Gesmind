@@ -44,8 +44,18 @@ export interface StoreMetadata {
 export interface StoreSettings {
   name: string;
   address: string;
+  city?: string;
+  country?: string;
+  zipCode?: string;
   phone: string;
   email: string;
+  website?: string;
+  
+  // Infos Légales & Fiscales
+  rccm?: string; // Registre du Commerce
+  nif?: string; // Numéro d'Identification Fiscale (Impôts)
+  legalStatus?: string; // SARL, SA, EI, etc.
+  
   logoUrl?: string; // Base64 string du logo
   recoveryKey?: string; // Clé de secours pour l'admin
   language: string;
@@ -134,7 +144,7 @@ export interface EmployeeDocument {
 // --- UTILISATEUR (Compte d'accès Application) ---
 export interface User {
   id: string;
-  name: string;
+  name: string; // Pseudo de connexion
   role: UserRole;
   pin: string; // Code PIN
   avatar?: string;
@@ -154,10 +164,14 @@ export interface Employee {
   phone?: string;
   email?: string;
   address?: string;
+  city?: string;
+  country?: string;
+  zipCode?: string;
   
   // Données Personnelles
   gender?: 'M' | 'F';
   birthDate?: string; // Date de naissance
+  placeOfBirth?: string; // Lieu de naissance
   residence?: string;
   childrenCount?: number;
   maritalStatus?: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';

@@ -1,14 +1,15 @@
+
 {
   "short_name": "Gesmind",
   "name": "Gesmind Enterprise",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3233/3233483.png",
+      "src": "logo.png",
       "type": "image/png",
       "sizes": "192x192"
     },
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/3233/3233483.png",
+      "src": "logo.png",
       "type": "image/png",
       "sizes": "512x512"
     }

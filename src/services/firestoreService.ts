@@ -67,10 +67,6 @@ const authGuard = (startSnapshot: () => () => void) => {
 
 // --- MESSAGING SERVER TRIGGER ---
 
-/**
- * Envoie une demande d'envoi d'Email ou SMS au serveur Backend (Cloud Functions).
- * Le serveur écoute la collection 'message_queue'.
- */
 export const sendCloudMessage = async (type: 'EMAIL' | 'SMS', to: string, subject: string, body: string) => {
     if (!db) {
         console.warn("Mode Local : Impossible d'envoyer des messages Cloud réels.");
@@ -80,7 +76,6 @@ export const sendCloudMessage = async (type: 'EMAIL' | 'SMS', to: string, subjec
 
     try {
         await ensureAuthReady();
-        // On écrit dans la file d'attente que le serveur Cloud Functions écoute
         await addDoc(collection(db, "message_queue"), {
             type,
             to,
@@ -89,7 +84,6 @@ export const sendCloudMessage = async (type: 'EMAIL' | 'SMS', to: string, subjec
             status: "PENDING",
             createdAt: new Date().toISOString()
         });
-        console.log("Demande d'envoi transmise au serveur.");
         return true;
     } catch (e) {
         console.error("Erreur lors de l'envoi de la demande au serveur:", e);
@@ -99,7 +93,7 @@ export const sendCloudMessage = async (type: 'EMAIL' | 'SMS', to: string, subjec
 
 // --- STORE MANAGEMENT ---
 
-export const createStoreInDB = async (storeId: string, metadata: StoreMetadata, settings: StoreSettings, initialAdmin: User) => {
+export const createStoreInDB = async (storeId: string, metadata: StoreMetadata, settings: StoreSettings, initialAdmin: User, initialEmployee: Employee) => {
   if (!db) {
       // Local Mode
       const stores = getLocalData('gesmind_local_stores_registry');
@@ -107,6 +101,7 @@ export const createStoreInDB = async (storeId: string, metadata: StoreMetadata, 
       setLocalData('gesmind_local_stores_registry', stores);
       localStorage.setItem(`gesmind_local_${storeId}_settings`, JSON.stringify(settings));
       setLocalData(`gesmind_local_${storeId}_users`, [initialAdmin]);
+      setLocalData(`gesmind_local_${storeId}_employees`, [initialEmployee]); // Ajout employé
       return true;
   }
   
@@ -116,6 +111,7 @@ export const createStoreInDB = async (storeId: string, metadata: StoreMetadata, 
     await setDoc(doc(db, "stores_registry", storeId), cleanData(metadata));
     await setDoc(doc(db, "stores", storeId), { settings: cleanData(settings) });
     await setDoc(doc(db, "stores", storeId, "users", initialAdmin.id), cleanData(initialAdmin));
+    await setDoc(doc(db, "stores", storeId, "employees", initialEmployee.id), cleanData(initialEmployee)); // Ajout employé
     return true;
   } catch (error) {
     console.error("Erreur création boutique:", error);
@@ -123,7 +119,6 @@ export const createStoreInDB = async (storeId: string, metadata: StoreMetadata, 
   }
 };
 
-// NOUVELLE FONCTION : Vérifie si une boutique existe par son ID (Sans lister toutes les boutiques)
 export const getStoreMetadata = async (storeId: string): Promise<StoreMetadata | null> => {
     if (!db) {
         const stores = getLocalData('gesmind_local_stores_registry');
@@ -146,24 +141,6 @@ export const getStoreMetadata = async (storeId: string): Promise<StoreMetadata |
     }
 };
 
-// Cette fonction est conservée pour le mode LOCAL uniquement ou usage admin spécifique
-// Elle ne doit plus être utilisée pour peupler le menu déroulant public
-export const subscribeToStoresRegistry = (callback: (stores: StoreMetadata[]) => void) => {
-  if (!db) {
-      const key = 'gesmind_local_stores_registry';
-      const update = () => callback(getLocalData(key));
-      if (!localListeners[key]) localListeners[key] = [];
-      localListeners[key].push(update);
-      update();
-      return () => { localListeners[key] = localListeners[key].filter(cb => cb !== update); };
-  }
-  
-  // En mode Cloud sécurisé, on renvoie une liste vide par défaut pour éviter le listing global
-  // Sauf si on est admin système (ce qui n'est pas géré ici)
-  callback([]); 
-  return () => {};
-};
-
 export const deleteStoreFromDB = async (storeId: string) => {
   if (!db) {
       const stores = getLocalData('gesmind_local_stores_registry').filter((s: any) => s.id !== storeId);
@@ -174,6 +151,7 @@ export const deleteStoreFromDB = async (storeId: string) => {
   try {
     await ensureAuthReady();
     await deleteDoc(doc(db, "stores_registry", storeId));
+    // In a real app we'd trigger a cloud function to delete the subcollections
     return true;
   } catch (error) {
     console.error("Erreur suppression boutique:", error);
@@ -181,17 +159,14 @@ export const deleteStoreFromDB = async (storeId: string) => {
   }
 };
 
-// --- GENERIC LOCAL SUBSCRIBER ---
-const subscribeToLocalCollection = (storeId: string, collection: string, callback: (data: any[]) => void) => {
-    const key = `gesmind_local_${storeId}_${collection}`;
+const subscribeToLocalCollection = (storeId: string, collectionName: string, callback: (data: any[]) => void) => {
+    const key = `gesmind_local_${storeId}_${collectionName}`;
     const update = () => callback(getLocalData(key));
     if (!localListeners[key]) localListeners[key] = [];
     localListeners[key].push(update);
     update();
     return () => { localListeners[key] = localListeners[key].filter(cb => cb !== update); };
 };
-
-// --- DATA LISTENERS (REALTIME) ---
 
 export const subscribeToInventory = (storeId: string, callback: (data: InventoryItem[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'inventory', callback);

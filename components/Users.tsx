@@ -10,30 +10,26 @@ interface UsersProps {
   onUpdateUser: (id: string, user: Partial<User>) => void;
   onDeleteUser: (id: string) => void;
   currentUser: User;
-  onSupervise?: (user: User) => void; // Option 1
-  onLoginAs?: (user: User) => void;   // Option 2
+  onSupervise?: (user: User) => void; 
+  onLoginAs?: (user: User) => void;   
 }
 
 export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, onDeleteUser, currentUser, onSupervise, onLoginAs }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Login As Modal State
   const [loginAsUser, setLoginAsUser] = useState<User | null>(null);
   const [loginPin, setLoginPin] = useState('');
   const [loginError, setLoginError] = useState('');
 
-  // Editing State
   const [editingId, setEditingId] = useState<string | null>(null);
 
-  // Form State
   const [newName, setNewName] = useState('');
   const [newRole, setNewRole] = useState<UserRole>('SELLER');
   const [newPin, setNewPin] = useState('');
   const [newCommission, setNewCommission] = useState(0);
   const [newAvatar, setNewAvatar] = useState<string | undefined>(undefined);
   
-  // Permission State (String Array of keys like 'inventory.add')
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
 
   if (currentUser.role !== 'ADMIN') {
@@ -52,12 +48,8 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffMins = Math.floor(diffMs / 60000);
-    
-    // Considéré en ligne si activité < 5 min
     const isOnline = diffMins < 5; 
-    
     if (isOnline) return { text: 'En ligne', isOnline: true };
-    
     return { 
         text: `Le ${date.toLocaleDateString()} à ${date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`, 
         isOnline: false 
@@ -75,10 +67,8 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
     const hasAll = allKeys.every(k => selectedPermissions.includes(k));
     
     if (hasAll) {
-      // Remove all
       setSelectedPermissions(prev => prev.filter(p => !allKeys.includes(p)));
     } else {
-      // Add all (without duplicates)
       setSelectedPermissions(prev => [...new Set([...prev, ...allKeys])]);
     }
   };
@@ -90,7 +80,6 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
     setNewRole('SELLER');
     setNewCommission(0);
     setNewAvatar(undefined);
-    // Default permissions for sellers
     setSelectedPermissions(['dashboard.view', 'commercial.view', 'commercial.sale', 'settings.view', 'settings.view_profile']);
   };
 
@@ -119,12 +108,10 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (file.size > 2 * 1024 * 1024) {
       alert("L'image est trop volumineuse (Max 2Mo).");
       return;
     }
-
     const reader = new FileReader();
     reader.onload = (event) => {
        setNewAvatar(event.target?.result as string);
@@ -136,10 +123,8 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
     e.preventDefault();
     if (!newName || !newPin) return;
 
-    // Force basic permissions if role is ADMIN
     let finalPermissions = [...selectedPermissions];
     if (newRole === 'ADMIN') {
-        // Ensure Admin has critical permissions if not selected
         if (!finalPermissions.includes('users.view')) finalPermissions.push('users.view');
         if (!finalPermissions.includes('users.manage')) finalPermissions.push('users.manage');
         if (!finalPermissions.includes('settings.view')) finalPermissions.push('settings.view');
@@ -172,7 +157,6 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
   const handleLoginAsSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       if (!loginAsUser || !onLoginAs) return;
-      
       if (loginPin === loginAsUser.pin) {
           onLoginAs(loginAsUser);
           setLoginAsUser(null);
@@ -278,7 +262,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
         )})}
       </div>
 
-      {/* LOGIN AS MODAL (Option 2) */}
+      {/* LOGIN AS MODAL */}
       {loginAsUser && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up border-t-4 border-amber-500">
@@ -305,7 +289,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                           maxLength={4}
                           value={loginPin}
                           onChange={(e) => setLoginPin(e.target.value)}
-                          className="w-full px-4 py-3 border border-slate-300 rounded-xl font-mono text-center text-xl tracking-widest focus:ring-2 focus:ring-amber-500/30"
+                          className="w-full px-4 py-3 border border-slate-300 rounded-xl font-mono text-center text-xl tracking-widest focus:ring-2 focus:ring-amber-500/30 text-slate-900 bg-white"
                           placeholder="••••"
                       />
                       
@@ -324,7 +308,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
           </div>
       )}
 
-      {/* EDIT MODAL (Existing code...) */}
+      {/* EDIT MODAL */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in-up my-8 max-h-[90vh] overflow-y-auto">
@@ -332,7 +316,6 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
               {editingId ? 'Modifier le compte' : 'Nouveau Compte Utilisateur'}
             </h3>
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* ... (Existing form content remains unchanged) ... */}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Left Column: Identity */}
                   <div className="space-y-4 lg:col-span-1">
@@ -344,7 +327,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                         <input 
                             type="text" 
                             required
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500/20 bg-white text-slate-900"
                             value={newName}
                             onChange={e => setNewName(e.target.value)}
                             placeholder="Pour la connexion"
@@ -382,7 +365,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                             required
                             maxLength={4}
                             pattern="\d{4}"
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tracking-widest"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg font-mono tracking-widest bg-white text-slate-900"
                             value={newPin}
                             onChange={e => setNewPin(e.target.value)}
                             placeholder="••••"
@@ -393,7 +376,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Rôle Système</label>
                             <select 
-                            className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                            className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                             value={newRole}
                             onChange={e => setNewRole(e.target.value as UserRole)}
                             >
@@ -410,7 +393,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                             <input 
                                 type="number" 
                                 min="0" max="100"
-                                className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-slate-900"
                                 value={newCommission}
                                 onChange={e => setNewCommission(parseFloat(e.target.value))}
                             />

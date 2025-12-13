@@ -1,10 +1,22 @@
-// Removed reference to vite/client to prevent type definition error.
-// Augmented NodeJS.ProcessEnv to prevent redeclaration error and provide type safety.
-
 declare namespace NodeJS {
   interface ProcessEnv {
     API_KEY: string;
     PACKAGE_VERSION: string;
     [key: string]: string | undefined;
   }
+}
+
+declare module '*.png' {
+  const value: string;
+  export default value;
+}
+
+declare module '*.jpg' {
+  const value: string;
+  export default value;
+}
+
+declare module '*.svg' {
+  const value: string;
+  export default value;
 }
