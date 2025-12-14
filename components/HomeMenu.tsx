@@ -4,6 +4,7 @@ import { ViewState, User, InventoryItem, Transaction, Currency } from '../types'
 import { LayoutDashboard, Package, Sparkles, Settings, ShoppingCart, Users, Wallet, Briefcase, Contact, Truck, LogOut, TrendingDown } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { GlobalSearch } from './GlobalSearch';
+import { GesmindLogo } from './GesmindLogo';
 
 interface HomeMenuProps {
   currentUser: User;
@@ -63,13 +64,18 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
       
       {/* Header Compact */}
       <div className="text-center mt-2 mb-2 flex-shrink-0 flex flex-col items-center w-full max-w-xl">
-         {/* Logo Section: Only render if URL exists, otherwise empty */}
-         {logoUrl && (
+         {/* Logo Section */}
+         {logoUrl ? (
            <img 
              src={logoUrl} 
              alt="Logo Entreprise" 
              className="w-16 h-16 object-contain mb-2 drop-shadow-md"
            />
+         ) : (
+           // Utilisation du logo vectoriel si pas de logo perso
+           <div className="mb-2">
+             <GesmindLogo className="w-16 h-16" withText={false} />
+           </div>
          )}
          
          <h1 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">{appName}</h1>

@@ -4,6 +4,8 @@ import { User, StoreMetadata, StoreSettings, Employee } from '../types';
 import { LogIn, User as UserIcon, Lock, PlusCircle, Building, ArrowRight, X, Image as ImageIcon, Trash2, AlertTriangle, ChevronDown, Store, Cloud, Database, HardDrive, ShieldCheck, AlertCircle, Sparkles, Upload, Check, RefreshCw, Palette, Search, Copy, KeyRound, HelpCircle, Mail, Phone, Shield, FileText, Globe, MapPin } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { generateStoreLogo } from '../services/geminiService';
+import { GesmindLogo } from './GesmindLogo';
+import { LoadingScreen } from './LoadingScreen'; // Import ajouté
 
 interface AuthProps {
   users: User[];
@@ -50,6 +52,10 @@ export const Auth: React.FC<AuthProps> = ({
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState(''); 
   const [error, setError] = useState('');
+
+  // GLOBAL LOADING STATE (Pour l'écran de chargement vert)
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   // Create Store & Config State
   const [isSetupOpen, setIsSetupOpen] = useState(false);
@@ -142,13 +148,23 @@ export const Auth: React.FC<AuthProps> = ({
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const user = users.find(u => u.name.toLowerCase() === username.toLowerCase() && u.pin === password);
-    if (user) {
-      localStorage.setItem('gesmind_last_username', user.name);
-      onLogin(user);
-    } else {
-      setError(t('login_error'));
-    }
+    
+    // Déclenchement du loader
+    setIsLoading(true);
+    setLoadingMessage("Authentification...");
+
+    // Simulation d'un délai réseau pour l'effet visuel (1.5s)
+    setTimeout(() => {
+        const user = users.find(u => u.name.toLowerCase() === username.toLowerCase() && u.pin === password);
+        if (user) {
+          localStorage.setItem('gesmind_last_username', user.name);
+          onLogin(user);
+          // Le loader restera actif jusqu'à ce que le composant parent change de vue
+        } else {
+          setIsLoading(false);
+          setError(t('login_error'));
+        }
+    }, 1500);
   };
 
   const generateAutoKey = () => 'REC-' + Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -245,17 +261,38 @@ export const Auth: React.FC<AuthProps> = ({
       setSearchError('');
       setFoundStore(null);
       if (!searchStoreId) return;
-      const result = await onFindStore(searchStoreId);
-      if (result) setFoundStore(result);
-      else setSearchError("ID introuvable.");
+
+      // Loader Recherche
+      setIsLoading(true);
+      setLoadingMessage("Recherche de l'entreprise...");
+
+      try {
+          const result = await onFindStore(searchStoreId);
+          // Délai artificiel pour fluidité
+          await new Promise(r => setTimeout(r, 800));
+          
+          if (result) setFoundStore(result);
+          else setSearchError("ID introuvable.");
+      } catch (e) {
+          setSearchError("Erreur de connexion.");
+      } finally {
+          setIsLoading(false);
+      }
   };
 
-  const confirmJoinStore = () => {
+  const confirmJoinStore = async () => {
       if (foundStore && onAddKnownStore) {
+          // Loader Connexion Boutique
+          setIsLoading(true);
+          setLoadingMessage("Connexion à la boutique...");
+          
+          await new Promise(r => setTimeout(r, 1000));
+
           onAddKnownStore(foundStore);
           setIsFindStoreOpen(false);
           setFoundStore(null);
           setSearchStoreId('');
+          setIsLoading(false);
       }
   };
 
@@ -395,6 +432,9 @@ export const Auth: React.FC<AuthProps> = ({
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-4 font-sans relative">
       
+      {/* LOADING SCREEN OVERLAY */}
+      {isLoading && <LoadingScreen message={loadingMessage} />}
+
       {/* HEADER BAR */}
       <div className="absolute top-4 left-4 z-20 flex gap-2">
          {availableStores.length > 0 ? (
@@ -433,8 +473,17 @@ export const Auth: React.FC<AuthProps> = ({
       {/* STORE LOGO */}
       {currentStoreId && (
         <div className="text-center mb-8 animate-fade-in flex flex-col items-center mt-12 sm:mt-0 justify-center group relative">
-          {storeLogo && <img src={storeLogo} className="w-32 h-32 object-contain mb-4 drop-shadow-2xl" />}
+          {storeLogo ? (
+            <img src={storeLogo} className="w-32 h-32 object-contain mb-4 drop-shadow-2xl" />
+          ) : (
+            // Use Generic Store Icon if no custom logo to respect "No Gesmind default"
+            <div className="mb-4 p-6 bg-slate-800/50 rounded-full border border-slate-700 shadow-2xl backdrop-blur-sm">
+               <Store className="w-20 h-20 text-slate-300" />
+            </div>
+          )}
+          
           {storeName && <h2 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">{storeName}</h2>}
+          
           <button onClick={handleCopyId} className="mt-2 text-[10px] text-slate-500 bg-slate-800/50 px-3 py-1 rounded-full border border-slate-700 opacity-70 hover:opacity-100 transition-all cursor-pointer flex items-center gap-2">
              {copyFeedback ? <span className="text-emerald-400 font-bold flex items-center"><Check className="w-3 h-3 mr-1" /> Copié !</span> : <>ID: <span className="font-mono text-teal-400 select-all">{currentStoreId}</span> <Copy className="w-3 h-3" /></>}
           </button>
@@ -480,7 +529,6 @@ export const Auth: React.FC<AuthProps> = ({
         )}
       </div>
       
-      {/* FOOTER ACTIONS */}
       {availableStores.length > 0 && (
         <div className="mt-6 w-full max-w-md flex flex-col items-center gap-4 z-10 px-2">
             <div className="flex justify-between w-full">
@@ -495,7 +543,7 @@ export const Auth: React.FC<AuthProps> = ({
         </div>
       )}
 
-      {/* --- MODAL CRÉATION ENTREPRISE (FULL FORM) --- */}
+      {/* --- CREATE MODAL --- */}
       {isSetupOpen && (
         <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-6 animate-fade-in-up max-h-[90vh] overflow-y-auto">
@@ -508,8 +556,7 @@ export const Auth: React.FC<AuthProps> = ({
              </div>
 
              <form onSubmit={handleCreateSubmit} className="space-y-8">
-                
-                {/* SECTION 1: ADMIN INFO */}
+                {/* ... (Form Content) ... */}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wider border-b border-indigo-100 pb-2 flex items-center">
                         <UserIcon className="w-4 h-4 mr-2"/> 1. Informations Personnelles (Administrateur)
@@ -532,7 +579,6 @@ export const Auth: React.FC<AuthProps> = ({
                     </div>
                 </div>
 
-                {/* SECTION 2: COMPANY INFO */}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wider border-b border-indigo-100 pb-2 flex items-center">
                         <Store className="w-4 h-4 mr-2"/> 2. Informations de l'Entreprise
@@ -553,7 +599,7 @@ export const Auth: React.FC<AuthProps> = ({
                             <label className="block text-xs font-bold text-slate-500 uppercase mb-2">Logo & Branding</label>
                             <div className="flex items-center space-x-4">
                                 <div className="w-20 h-20 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden">
-                                    {newLogoUrl ? <img src={newLogoUrl} className="w-full h-full object-contain" /> : <ImageIcon className="w-8 h-8 text-slate-300" />}
+                                    {newLogoUrl ? <img src={newLogoUrl} className="w-full h-full object-contain" /> : <Store className="w-8 h-8 text-slate-300" />}
                                 </div>
                                 <div className="flex flex-col gap-2">
                                     <button type="button" onClick={() => logoInputRef.current?.click()} className="text-xs bg-white border border-slate-300 px-3 py-2 rounded shadow-sm hover:bg-slate-50 text-slate-700">Importer Image</button>
@@ -569,7 +615,6 @@ export const Auth: React.FC<AuthProps> = ({
                     </div>
                 </div>
 
-                {/* SECTION 3: LOGIN & SECURITY */}
                 <div className="space-y-4">
                     <h4 className="text-sm font-bold text-indigo-900 uppercase tracking-wider border-b border-indigo-100 pb-2 flex items-center">
                         <KeyRound className="w-4 h-4 mr-2"/> 3. Informations de Connexion
@@ -603,47 +648,27 @@ export const Auth: React.FC<AuthProps> = ({
         </div>
       )}
 
-      {/* --- REJOIN / FIND STORE MODAL --- */}
+      {/* --- FIND STORE MODAL --- */}
       {isFindStoreOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
             <h3 className="text-xl font-bold text-slate-800 mb-4">{t('change_store')}</h3>
             <p className="text-slate-500 text-sm mb-6">Entrez l'identifiant unique de la boutique que vous souhaitez rejoindre.</p>
-            
             <form onSubmit={handleFindStoreSubmit} className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                <input 
-                  type="text" 
-                  value={searchStoreId} 
-                  onChange={(e) => setSearchStoreId(e.target.value)} 
-                  className="input-field pl-10" 
-                  placeholder="ID Boutique (ex: store_123...)" 
-                  required 
-                />
+                <input type="text" value={searchStoreId} onChange={(e) => setSearchStoreId(e.target.value)} className="input-field pl-10" placeholder="ID Boutique" required />
               </div>
-              
               {searchError && <p className="text-red-500 text-sm font-medium">{searchError}</p>}
-              
               {foundStore && (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-center space-x-3">
-                   <div className="bg-white p-2 rounded-lg shadow-sm">
-                     <Building className="w-6 h-6 text-emerald-600" />
-                   </div>
-                   <div>
-                     <p className="font-bold text-emerald-900">{foundStore.name}</p>
-                     <p className="text-xs text-emerald-700">ID: {foundStore.id}</p>
-                   </div>
+                   <div className="bg-white p-2 rounded-lg shadow-sm"><Building className="w-6 h-6 text-emerald-600" /></div>
+                   <div><p className="font-bold text-emerald-900">{foundStore.name}</p><p className="text-xs text-emerald-700">ID: {foundStore.id}</p></div>
                 </div>
               )}
-
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => { setIsFindStoreOpen(false); setFoundStore(null); setSearchError(''); }} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">{t('cancel')}</button>
-                {foundStore ? (
-                  <button type="button" onClick={confirmJoinStore} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200">Rejoindre</button>
-                ) : (
-                  <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200">Chercher</button>
-                )}
+                {foundStore ? (<button type="button" onClick={confirmJoinStore} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-200">Rejoindre</button>) : (<button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-200">Chercher</button>)}
               </div>
             </form>
           </div>
@@ -654,69 +679,45 @@ export const Auth: React.FC<AuthProps> = ({
       {isRecoveryOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
-            <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center"><ShieldCheck className="w-6 h-6 mr-2 text-indigo-600"/> Récupération</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Récupération Admin</h3>
             
-            {recoverySuccess ? (
-                <div className="text-center py-8">
-                    <Check className="w-16 h-16 text-emerald-500 mx-auto mb-4" />
-                    <p className="text-lg font-bold text-slate-800">Mot de passe réinitialisé !</p>
-                    <p className="text-slate-500">Vous pouvez maintenant vous connecter.</p>
-                </div>
-            ) : recoveryStep === 1 ? (
+            {recoveryStep === 1 ? (
                 <form onSubmit={handleRecoveryVerification} className="space-y-4">
-                    <p className="text-sm text-slate-500">Veuillez vérifier votre identité administrateur.</p>
-                    
-                    <div className="flex gap-2 mb-2 p-1 bg-slate-100 rounded-lg">
-                        <button type="button" onClick={() => setRecoveryMethod('CONTACT')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${recoveryMethod === 'CONTACT' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>Email / Tel</button>
-                        <button type="button" onClick={() => setRecoveryMethod('KEY')} className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${recoveryMethod === 'KEY' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>Clé Secours</button>
+                    <p className="text-sm text-slate-500 mb-2">Veuillez vérifier votre identité.</p>
+                    <div className="flex gap-2 mb-2">
+                        <button type="button" onClick={() => setRecoveryMethod('CONTACT')} className={`flex-1 py-2 text-xs font-bold rounded-lg border ${recoveryMethod === 'CONTACT' ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-white border-slate-200 text-slate-600'}`}>Email / Tél</button>
+                        <button type="button" onClick={() => setRecoveryMethod('KEY')} className={`flex-1 py-2 text-xs font-bold rounded-lg border ${recoveryMethod === 'KEY' ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-white border-slate-200 text-slate-600'}`}>Clé Secours</button>
                     </div>
-
                     <input 
-                        type={recoveryMethod === 'KEY' ? 'text' : 'email'}
-                        placeholder={recoveryMethod === 'KEY' ? "Clé (REC-XXXX...)" : "Email ou Téléphone enregistré"}
-                        className="input-field"
-                        value={recoveryInput}
-                        onChange={e => setRecoveryInput(e.target.value)}
-                        required
+                        type="text" 
+                        value={recoveryInput} 
+                        onChange={(e) => setRecoveryInput(e.target.value)} 
+                        className="input-field" 
+                        placeholder={recoveryMethod === 'KEY' ? "Clé Admin (REC-...)" : "Email ou Téléphone enregistré"}
+                        required 
                     />
-                    
-                    {recoveryError && <p className="text-red-500 text-sm font-medium">{recoveryError}</p>}
-                    
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={resetRecoveryState} className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium">{t('cancel')}</button>
-                        <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold">Vérifier</button>
+                    {recoveryError && <p className="text-red-500 text-xs font-bold">{recoveryError}</p>}
+                    <div className="flex gap-3">
+                        <button type="button" onClick={resetRecoveryState} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">Annuler</button>
+                        <button type="submit" className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg">Vérifier</button>
                     </div>
                 </form>
             ) : (
                 <form onSubmit={handleRecoveryReset} className="space-y-4">
-                    <p className="text-sm text-green-600 font-medium bg-green-50 p-3 rounded-lg flex items-center"><Check className="w-4 h-4 mr-2"/> Identité vérifiée.</p>
-                    <p className="text-sm text-slate-500">Définissez un nouveau code PIN pour l'administrateur.</p>
-                    
-                    <input 
-                        type="password" 
-                        placeholder="Nouveau PIN (4 chiffres)" 
-                        className="input-field text-center tracking-widest font-mono"
-                        maxLength={4}
-                        value={recoveryNewPin}
-                        onChange={e => setRecoveryNewPin(e.target.value)}
-                        required
-                    />
-                    <input 
-                        type="password" 
-                        placeholder="Confirmer PIN" 
-                        className="input-field text-center tracking-widest font-mono"
-                        maxLength={4}
-                        value={recoveryConfirmPin}
-                        onChange={e => setRecoveryConfirmPin(e.target.value)}
-                        required
-                    />
-
-                    {recoveryError && <p className="text-red-500 text-sm font-medium">{recoveryError}</p>}
-
-                    <div className="flex gap-3 pt-2">
-                        <button type="button" onClick={resetRecoveryState} className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium">{t('cancel')}</button>
-                        <button type="submit" className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold">Réinitialiser</button>
-                    </div>
+                    {recoverySuccess ? (
+                        <div className="text-center py-6">
+                            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4"><Check className="w-8 h-8" /></div>
+                            <p className="text-emerald-800 font-bold">Code PIN réinitialisé avec succès !</p>
+                        </div>
+                    ) : (
+                        <>
+                            <p className="text-sm text-slate-500 mb-2">Identité vérifiée. Définissez le nouveau PIN Admin.</p>
+                            <input type="password" value={recoveryNewPin} onChange={(e) => setRecoveryNewPin(e.target.value)} className="input-field text-center font-mono tracking-widest text-lg" placeholder="Nouveau PIN" maxLength={4} required />
+                            <input type="password" value={recoveryConfirmPin} onChange={(e) => setRecoveryConfirmPin(e.target.value)} className="input-field text-center font-mono tracking-widest text-lg" placeholder="Confirmer PIN" maxLength={4} required />
+                            {recoveryError && <p className="text-red-500 text-xs font-bold">{recoveryError}</p>}
+                            <button type="submit" className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg">Confirmer changement</button>
+                        </>
+                    )}
                 </form>
             )}
           </div>
@@ -726,123 +727,101 @@ export const Auth: React.FC<AuthProps> = ({
       {/* --- DELETE STORE MODAL --- */}
       {isDeleteOpen && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up border-t-4 border-red-500">
-              <h3 className="text-xl font-bold text-slate-800 mb-2 flex items-center text-red-600"><AlertTriangle className="w-6 h-6 mr-2"/> Suppression</h3>
-              <p className="text-slate-600 text-sm mb-6">
-                  Vous êtes sur le point de supprimer l'accès à cette entreprise sur cet appareil.
-                  <br/><span className="text-xs text-slate-400 mt-1 block">(Si le mode Cloud est actif, les données restent sur le serveur).</span>
-              </p>
-
-              <form onSubmit={handleDeleteSubmit} className="space-y-4">
-                  <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nom Admin</label>
-                      <input 
-                          type="text" 
-                          className="input-field" 
-                          value={deleteAdminName} 
-                          onChange={e => setDeleteAdminName(e.target.value)} 
-                          required 
-                      />
-                  </div>
-                  <div>
-                      <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Code PIN Admin</label>
-                      <input 
-                          type="password" 
-                          className="input-field text-center tracking-widest font-mono" 
-                          maxLength={4} 
-                          value={deleteAdminPin} 
-                          onChange={e => setDeleteAdminPin(e.target.value)} 
-                          required 
-                      />
-                  </div>
-
-                  {deleteError && <p className="text-red-500 text-xs font-bold text-center">{deleteError}</p>}
-
-                  <div className="flex gap-3 pt-2">
-                      <button type="button" onClick={() => setIsDeleteOpen(false)} className="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium">{t('cancel')}</button>
-                      <button type="submit" className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold shadow-lg shadow-red-200">Supprimer</button>
-                  </div>
-              </form>
-           </div>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up border-t-4 border-red-500">
+            <h3 className="text-xl font-bold text-red-600 mb-2">{t('delete_store_title')}</h3>
+            <p className="text-slate-600 text-sm mb-4 leading-relaxed">{t('delete_store_warning')}</p>
+            
+            <form onSubmit={handleDeleteSubmit} className="space-y-4">
+                <div className="bg-red-50 p-3 rounded-lg border border-red-100">
+                    <label className="block text-xs font-bold text-red-800 mb-1">{t('delete_confirm_admin')}</label>
+                    <input type="text" value={deleteAdminName} onChange={(e) => setDeleteAdminName(e.target.value)} className="w-full p-2 border border-red-200 rounded bg-white text-sm mb-2" placeholder="Nom Admin" required />
+                    <input type="password" value={deleteAdminPin} onChange={(e) => setDeleteAdminPin(e.target.value)} className="w-full p-2 border border-red-200 rounded bg-white text-sm font-mono text-center tracking-widest" placeholder="Code PIN" maxLength={4} required />
+                </div>
+                {deleteError && <p className="text-red-500 text-xs font-bold">{deleteError}</p>}
+                
+                <div className="flex gap-3">
+                    <button type="button" onClick={() => setIsDeleteOpen(false)} className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium">{t('cancel')}</button>
+                    <button type="submit" className="flex-1 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold shadow-lg">{t('delete_btn')}</button>
+                </div>
+            </form>
+          </div>
         </div>
       )}
 
       {/* --- STORAGE CHOICE MODAL --- */}
       {showStorageChoiceModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-fade-in-up">
-              <h3 className="text-2xl font-bold text-slate-800 mb-2 text-center">Mode de Stockage</h3>
-              <p className="text-slate-500 text-center mb-8">Comment souhaitez-vous gérer vos données ?</p>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button onClick={() => handleStorageChoice('LOCAL')} className="p-6 rounded-xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 transition-all group text-left">
-                      <div className="bg-indigo-100 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:bg-indigo-200">
-                          <HardDrive className="w-6 h-6 text-indigo-600" />
-                      </div>
-                      <h4 className="font-bold text-slate-800 mb-1">Local (Hors-ligne)</h4>
-                      <p className="text-xs text-slate-500">Données stockées uniquement sur cet appareil. Rapide, privé, mais sans synchro.</p>
-                  </button>
-
-                  <button onClick={() => handleStorageChoice('CLOUD')} className="p-6 rounded-xl border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 transition-all group text-left">
-                      <div className="bg-emerald-100 w-12 h-12 rounded-full flex items-center justify-center mb-4 group-hover:bg-emerald-200">
-                          <Cloud className="w-6 h-6 text-emerald-600" />
-                      </div>
-                      <h4 className="font-bold text-slate-800 mb-1">Cloud (Sécurisé)</h4>
-                      <p className="text-xs text-slate-500">Données synchronisées via Google Firebase. Accessible partout, multi-utilisateurs.</p>
-                  </button>
-              </div>
-           </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-fade-in-up">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Mode de Stockage</h3>
+            <p className="text-slate-500 text-sm mb-6">Où souhaitez-vous stocker les données de votre entreprise ?</p>
+            <div className="space-y-4">
+               <button onClick={() => handleStorageChoice('CLOUD')} className="w-full p-4 rounded-xl border-2 border-indigo-100 hover:border-indigo-500 bg-indigo-50/50 hover:bg-indigo-50 flex items-center transition-all group">
+                  <div className="bg-indigo-100 p-3 rounded-full mr-4 group-hover:bg-indigo-200"><Cloud className="w-6 h-6 text-indigo-600" /></div>
+                  <div className="text-left"><h4 className="font-bold text-indigo-900">Cloud (Recommandé)</h4><p className="text-xs text-indigo-700">Synchronisation multi-appareils, sauvegarde automatique.</p></div>
+               </button>
+               <button onClick={() => handleStorageChoice('LOCAL')} className="w-full p-4 rounded-xl border-2 border-slate-100 hover:border-slate-400 bg-white hover:bg-slate-50 flex items-center transition-all group">
+                  <div className="bg-slate-100 p-3 rounded-full mr-4 group-hover:bg-slate-200"><HardDrive className="w-6 h-6 text-slate-600" /></div>
+                  <div className="text-left"><h4 className="font-bold text-slate-800">Local (Hors-ligne)</h4><p className="text-xs text-slate-500">Données stockées uniquement sur cet appareil.</p></div>
+               </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* --- FIREBASE CONFIG MODAL --- */}
+      {/* --- DB CONFIG MODAL --- */}
       {showDbConfigModal && (
-        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in-up">
-              <h3 className="text-xl font-bold text-slate-800 mb-4 flex items-center"><Database className="w-6 h-6 mr-2 text-emerald-600"/> Configuration Cloud</h3>
-              <p className="text-sm text-slate-500 mb-4">Collez la configuration JSON de votre projet Firebase ci-dessous.</p>
-              
-              <textarea 
-                  className="w-full h-40 p-3 border border-slate-300 rounded-xl font-mono text-xs text-slate-600 mb-2 focus:ring-2 focus:ring-emerald-500"
-                  placeholder='{ "apiKey": "...", "projectId": "..." }'
-                  value={firebaseJson}
-                  onChange={e => setFirebaseJson(e.target.value)}
-              ></textarea>
-              
-              {configError && <p className="text-red-500 text-xs font-bold mb-4">{configError}</p>}
-
-              <div className="flex gap-3 justify-end">
-                  <button onClick={() => setShowDbConfigModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Retour</button>
-                  <button onClick={handleDbConfigSubmit} className="px-6 py-2 bg-emerald-600 text-white rounded-lg font-bold hover:bg-emerald-700">Connecter</button>
-              </div>
-           </div>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in-up">
+            <h3 className="text-xl font-bold text-slate-800 mb-4">Configuration Cloud</h3>
+            <p className="text-slate-500 text-sm mb-4">Collez la configuration JSON de votre projet Firebase ci-dessous.</p>
+            <textarea 
+                className="w-full h-40 p-3 border border-slate-200 rounded-xl font-mono text-xs text-slate-700 bg-slate-50 focus:ring-2 focus:ring-indigo-500/20 outline-none"
+                placeholder='{ "apiKey": "...", "authDomain": "...", ... }'
+                value={firebaseJson}
+                onChange={(e) => setFirebaseJson(e.target.value)}
+            ></textarea>
+            {configError && <p className="text-red-500 text-xs font-bold mt-2">{configError}</p>}
+            <div className="flex justify-end gap-3 mt-4">
+                <button onClick={() => setShowDbConfigModal(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+                <button onClick={handleDbConfigSubmit} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700">Valider</button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* --- OTHER MODALS --- */}
+      {/* LOGO GENERATION MODAL */}
       {isLogoGenModalOpen && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up border-t-4 border-indigo-500">
               <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">Création de Logo IA</h3>
               <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
-                 {isGeneratingLogo ? (
-                    <div className="text-center animate-pulse"><Sparkles className="w-8 h-8 text-indigo-600 animate-spin-slow mx-auto mb-2" /><p className="text-indigo-700 font-bold">Création...</p></div>
-                 ) : generatedLogoPreview ? (
+                 {isGeneratingLogo ? (<div className="text-center animate-pulse"><p className="text-indigo-700 font-bold">Création...</p></div>) 
+                 : generatedLogoPreview ? (
                     <div className="flex flex-col items-center w-full">
-                       <img src={generatedLogoPreview} alt="Generated" className="w-32 h-32 object-contain mb-4 border rounded p-2" />
-                       <div className="flex gap-2 w-full"><button onClick={performGeneration} className="flex-1 py-2 bg-slate-100 rounded text-slate-700">Refaire</button><button onClick={confirmGeneratedLogo} className="flex-1 py-2 bg-indigo-600 text-white rounded">Valider</button></div>
+                        <img src={generatedLogoPreview} className="w-40 h-40 object-contain mb-6" />
+                        <div className="flex gap-3 w-full">
+                            <button onClick={performGeneration} className="flex-1 py-2 bg-slate-100 rounded">Refaire</button>
+                            <button onClick={confirmGeneratedLogo} className="flex-1 py-2 bg-indigo-600 text-white rounded">Valider</button>
+                        </div>
                     </div>
-                 ) : (
+                 )
+                 : (
                     <div className="w-full">
-                       <textarea className="w-full px-3 py-2 border rounded-lg text-sm mb-4 h-20 text-slate-900 bg-white" placeholder="Description..." value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)}></textarea>
-                       <div className="flex gap-2"><button onClick={() => setIsLogoGenModalOpen(false)} className="flex-1 py-2 text-slate-500">Annuler</button><button onClick={performGeneration} className="flex-1 py-2 bg-indigo-600 text-white rounded">Générer</button></div>
+                       <label className="block text-xs font-bold text-slate-500 mb-1">Description (Optionnel)</label>
+                       <textarea className="w-full px-3 py-2 border rounded mb-4 h-20 text-sm" value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)} placeholder="Ex: Moderne, minimaliste, bleu..."></textarea>
+                       <button onClick={performGeneration} className="w-full py-2 bg-indigo-600 text-white rounded font-bold shadow-lg hover:bg-indigo-700 transition-colors">
+                           Générer
+                       </button>
                     </div>
                  )}
+              </div>
+              <div className="mt-4 text-center">
+                  <button onClick={() => setIsLogoGenModalOpen(false)} className="text-slate-400 text-xs hover:text-slate-600">Annuler</button>
               </div>
            </div>
         </div>
       )}
-
+      
       <style>{`
         .input-field {
             width: 100%;
@@ -852,15 +831,10 @@ export const Auth: React.FC<AuthProps> = ({
             outline: none;
             transition: all 0.2s;
             background-color: #ffffff;
-            color: #0f172a; /* Slate-900 equivalent */
+            color: #0f172a;
         }
-        .input-field::placeholder {
-            color: #94a3b8; /* Slate-400 */
-        }
-        .input-field:focus {
-            border-color: #6366f1;
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-        }
+        .input-field::placeholder { color: #94a3b8; }
+        .input-field:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2); }
       `}</style>
     </div>
   );

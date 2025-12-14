@@ -17,17 +17,14 @@ import { Suppliers } from './components/Suppliers';
 import { Expenses } from './components/Expenses';
 import { UpdateBanner } from './components/UpdateBanner';
 import { Toast } from './components/Toast'; 
+import { SplashScreen } from './components/SplashScreen'; 
+import { LoadingScreen } from './components/LoadingScreen'; // IMPORT AJOUTÉ
 import { InventoryItem, ViewState, Transaction, User, CashMovement, StoreSettings, BackupData, CloudProvider, CashClosing, Customer, Supplier, AppUpdate, StoreMetadata, Expense, Employee } from './types';
 import { CURRENCIES, PERMISSION_CATEGORIES } from './constants';
 import { checkForUpdates } from './services/updateService';
-import { LogOut, WifiOff, Eye, X } from 'lucide-react';
+import { LogOut, WifiOff, Eye, X, Box } from 'lucide-react';
 import { getTranslation } from './translations';
 import { db, setupFirebase } from './src/firebaseConfig';
-
-// Suppression de l'import module pour éviter l'erreur "Failed to resolve module specifier"
-// On utilise le chemin direct vers le fichier statique public
-const logoUrl = 'logo.png';
-
 import { 
   createStoreInDB, 
   deleteStoreFromDB,
@@ -45,7 +42,8 @@ import {
   updateData,
   deleteData,
   updateSettingsInDB,
-  getStoreMetadata
+  getStoreMetadata,
+  processForgottenClosings 
 } from './src/services/firestoreService';
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -66,8 +64,9 @@ const App: React.FC = () => {
   
   const [isLaunching, setIsLaunching] = useState(true);
   const [isCreatingStoreLoading, setIsCreatingStoreLoading] = useState(false);
+  
   const [loadingProgress, setLoadingProgress] = useState(0);
-  const [loadingText, setLoadingText] = useState('Initialisation système...');
+  const [loadingText, setLoadingText] = useState('Initialisation...');
 
   const [supervisionTarget, setSupervisionTarget] = useState<User | null>(null);
   
@@ -92,31 +91,15 @@ const App: React.FC = () => {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [availableUpdate, setAvailableUpdate] = useState<AppUpdate | null>(null);
   
-  // Fonction pour précharger l'image du logo
-  const preloadImage = (src: string): Promise<void> => {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.src = src;
-      img.onload = () => resolve();
-      img.onerror = () => resolve(); // On ne bloque pas si l'image manque
-    });
-  };
-
-  // --- INITIALISATION RÉELLE DE L'APPLICATION ---
+  // --- INITIALISATION ---
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Étape 1 : Démarrage
-        setLoadingProgress(10);
-        setLoadingText("Démarrage du moteur...");
-        
-        // Étape 2 : Vérification DB
         if (db && !isDbConfigured) setIsDbConfigured(true);
-        await new Promise(r => setTimeout(r, 300)); // Petit délai pour fluidité UI
-        setLoadingProgress(30);
-        setLoadingText("Vérification stockage...");
+        
+        // Simulation rapide des tâches de fond pendant le splash
+        await new Promise(r => setTimeout(r, 500)); 
 
-        // Étape 3 : Chargement Données Locales
         const savedStores = localStorage.getItem('gesmind_known_stores');
         const lastStore = localStorage.getItem('gesmind_last_store_id');
         const savedCurrency = localStorage.getItem('gesmind_local_currency');
@@ -131,26 +114,10 @@ const App: React.FC = () => {
         }
         
         if (savedCurrency) setCurrencyCode(savedCurrency);
-        setLoadingProgress(60);
-        setLoadingText("Chargement des ressources graphiques...");
 
-        // Étape 4 : Préchargement Image (Crucial pour éviter le pop-in)
-        await preloadImage(logoUrl);
-        setLoadingProgress(85);
-        setLoadingText("Finalisation...");
-
-        // Étape 5 : Terminé
-        await new Promise(r => setTimeout(r, 400)); // Touche finale
-        setLoadingProgress(100);
-        setLoadingText("Prêt !");
-        
-        setTimeout(() => setIsLaunching(false), 500);
-
+        // Note: on ne set pas isLaunching à false ici, c'est le SplashScreen qui appellera le callback
       } catch (error) {
         console.error("Erreur init", error);
-        setLoadingText("Erreur lors du chargement.");
-        // Fallback pour ne pas bloquer l'app
-        setTimeout(() => setIsLaunching(false), 1000);
       }
     };
 
@@ -192,6 +159,19 @@ const App: React.FC = () => {
 
     return () => { unsubInv(); unsubTx(); unsubUsers(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); unsubSettings(); };
   }, [currentStoreId, isDbConfigured]);
+
+  // --- AUTOMATIC CLOSING CHECK ---
+  useEffect(() => {
+    if (currentUser && currentStoreId && isDbConfigured) {
+        const runAutoCloseCheck = async () => {
+            const closedCount = await processForgottenClosings(currentStoreId, currentUser.id, currentUser.name);
+            if (closedCount > 0) {
+                showToast(`${closedCount} journée(s) précédente(s) clôturée(s) automatiquement.`, 'info');
+            }
+        };
+        setTimeout(runAutoCloseCheck, 3000);
+    }
+  }, [currentUser, currentStoreId, isDbConfigured]);
 
   useEffect(() => {
     if (!currentUser || !currentStoreId) return;
@@ -256,8 +236,7 @@ const App: React.FC = () => {
 
   const selectedCurrency = CURRENCIES[currencyCode] || CURRENCIES['EUR'];
 
-  // ... (Handlers for Items, Users, Employees, etc. omitted for brevity as they are unchanged) ...
-  // [KEEP ALL EXISTING HANDLERS HERE UNCHANGED]
+  // ... (CRUD Handlers kept identical) ...
   const handleAddItem = (item: InventoryItem) => { if (!currentStoreId) return; if (supervisionTarget) item.createdBy = supervisionTarget.id; addData(currentStoreId, 'inventory', item); showToast("Produit ajouté", "success"); }
   const handleUpdateItem = (id: string, updatedItem: Partial<InventoryItem>) => currentStoreId && updateData(currentStoreId, 'inventory', id, updatedItem);
   const handleDeleteItem = (id: string) => { if(currentStoreId) { deleteData(currentStoreId, 'inventory', id); showToast("Produit supprimé", "info"); } };
@@ -276,12 +255,46 @@ const App: React.FC = () => {
   const handleAddExpense = (expense: Expense) => { if (currentStoreId) { if (supervisionTarget) expense.paidBy = `${currentUser?.name} (pour ${supervisionTarget.name})`; addData(currentStoreId, 'expenses', expense); const movement: CashMovement = { id: `m-exp-${Date.now()}`, date: expense.date, type: 'EXPENSE', amount: expense.amount, description: `Dépense : ${expense.description} (${expense.category})`, performedBy: expense.paidBy }; addData(currentStoreId, 'cash_movements', movement); showToast("Dépense enregistrée", "success"); } };
   const handleDeleteExpense = (id: string) => currentStoreId && deleteData(currentStoreId, 'expenses', id);
   const handlePaySalary = (employee: Employee, amountDisplayed: number, month: string) => { if (!currentStoreId) return; const amountBase = amountDisplayed / selectedCurrency.rate; const expense: Expense = { id: `exp-salary-${Date.now()}`, date: new Date().toISOString(), category: 'SALARY', description: `Salaire ${month} - ${employee.fullName}`, amount: amountBase, paidBy: currentUser?.name || 'Admin' }; handleAddExpense(expense); };
-  const handleAddTransaction = (transaction: Transaction) => { if (!currentStoreId) return; if (supervisionTarget) { transaction.sellerId = supervisionTarget.id; transaction.sellerName = `${currentUser?.name} (pour ${supervisionTarget.name})`; } addData(currentStoreId, 'transactions', transaction); transaction.items.forEach(item => { const product = inventory.find(p => p.id === item.productId); if (product) { const qtyChange = transaction.type === 'SALE' ? -item.quantity : item.quantity; const newQty = Math.max(0, product.quantity + qtyChange); updateData(currentStoreId, 'inventory', product.id, { quantity: newQty }); } }); if (transaction.amountPaid > 0) { const movement: CashMovement = { id: `m-auto-${Date.now()}`, date: transaction.date, type: transaction.type, amount: transaction.amountPaid, description: `${transaction.type === 'SALE' ? 'Vente' : 'Achat'} (Ref: ${transaction.id}) ${transaction.paymentStatus === 'PARTIAL' ? '- Partiel' : ''}`, performedBy: transaction.sellerName }; addData(currentStoreId, 'cash_movements', movement); } if (transaction.type === 'SALE' && transaction.customerId) { const customer = customers.find(c => c.id === transaction.customerId); if (customer) { updateData(currentStoreId, 'customers', customer.id, { totalSpent: customer.totalSpent + transaction.totalAmount, lastPurchaseDate: transaction.date }); } } showToast("Transaction validée", "success"); };
+  
+  const handleAddTransaction = (transaction: Transaction) => { 
+    if (!currentStoreId) return; 
+    if (supervisionTarget) { 
+        transaction.sellerId = supervisionTarget.id; 
+        transaction.sellerName = `${currentUser?.name} (pour ${supervisionTarget.name})`; 
+    }
+    transaction.isLocked = false; 
+    addData(currentStoreId, 'transactions', transaction); 
+    transaction.items.forEach(item => { 
+        const product = inventory.find(p => p.id === item.productId); 
+        if (product) { 
+            const qtyChange = transaction.type === 'SALE' ? -item.quantity : item.quantity; 
+            const newQty = Math.max(0, product.quantity + qtyChange); 
+            updateData(currentStoreId, 'inventory', product.id, { quantity: newQty }); 
+        } 
+    }); 
+    if (transaction.amountPaid > 0) { 
+        const movement: CashMovement = { 
+            id: `m-auto-${Date.now()}`, 
+            date: transaction.date, 
+            type: transaction.type,
+            amount: transaction.amountPaid, 
+            description: `${transaction.type === 'SALE' ? 'Vente' : 'Règlement Achat'} (Ref: ${transaction.id}) ${transaction.paymentStatus === 'PARTIAL' ? '- Partiel' : ''}`, 
+            performedBy: transaction.sellerName 
+        }; 
+        addData(currentStoreId, 'cash_movements', movement); 
+    } 
+    if (transaction.type === 'SALE' && transaction.customerId) { 
+        const customer = customers.find(c => c.id === transaction.customerId); 
+        if (customer) { 
+            updateData(currentStoreId, 'customers', customer.id, { totalSpent: customer.totalSpent + transaction.totalAmount, lastPurchaseDate: transaction.date }); 
+        } 
+    } 
+    showToast("Transaction validée", "success"); 
+  };
+
   const handleSettleTransaction = (transactionId: string, amountToPay: number) => { if (!currentStoreId) return; const tx = transactions.find(t => t.id === transactionId); if (!tx) return; const amountBase = amountToPay / selectedCurrency.rate; const newAmountPaid = tx.amountPaid + amountBase; let newStatus: 'PAID' | 'PARTIAL' | 'UNPAID' = 'PARTIAL'; let paidAtStr: string | undefined = undefined; if (newAmountPaid >= tx.totalAmount - 0.01) { newStatus = 'PAID'; paidAtStr = new Date().toISOString(); } updateData(currentStoreId, 'transactions', transactionId, { amountPaid: newAmountPaid, paymentStatus: newStatus, paidAt: paidAtStr }); let performerName = currentUser?.name || 'Système'; if (supervisionTarget) { performerName = `${currentUser?.name} (pour ${supervisionTarget.name})`; } const movement: CashMovement = { id: `m-settle-${Date.now()}`, date: new Date().toISOString(), type: tx.type, amount: amountBase, description: `Règlement Solde ${tx.type === 'SALE' ? 'Vente' : 'Achat'} (Ref: ${tx.id})`, performedBy: performerName }; addData(currentStoreId, 'cash_movements', movement); showToast("Règlement enregistré", "success"); };
   const handleAddCashMovement = (movement: CashMovement) => { if (currentStoreId) { if (supervisionTarget) { movement.performedBy = `${currentUser?.name} (pour ${supervisionTarget.name})`; } addData(currentStoreId, 'cash_movements', movement); showToast("Mouvement de caisse ajouté", "success"); } };
-  const handleCloseCash = (type: 'MANUAL' | 'AUTO', forceDate?: string) => { if (!currentStoreId) return; const closingDate = forceDate || new Date().toISOString(); const lastClosing = storeSettings.lastClosingDate ? new Date(storeSettings.lastClosingDate) : new Date(0); const periodMovements = cashMovements.filter(m => new Date(m.date) > lastClosing && new Date(m.date) <= new Date(closingDate)); if (periodMovements.length === 0 && type === 'AUTO') { updateSettingsInDB(currentStoreId, { ...storeSettings, lastClosingDate: closingDate }); return; } let totalIn = 0; let totalOut = 0; periodMovements.forEach(m => { if (m.type === 'SALE' || m.type === 'DEPOSIT') { totalIn += m.amount; } else { totalOut += m.amount; } }); const allPriorMovements = cashMovements.filter(m => new Date(m.date) <= lastClosing); const openingBalance = allPriorMovements.reduce((acc, m) => { if (m.type === 'SALE' || m.type === 'DEPOSIT') return acc + m.amount; return acc - m.amount; }, 0); const closingBalance = openingBalance + totalIn - totalOut; const newClosing: CashClosing = { id: `close-${Date.now()}`, date: closingDate, periodStart: lastClosing.toISOString(), openingBalance, closingBalance, totalIn, totalOut, type, closedBy: type === 'AUTO' ? 'Système' : (currentUser?.name || 'Inconnu') }; addData(currentStoreId, 'cash_closings', newClosing); updateSettingsInDB(currentStoreId, { ...storeSettings, lastClosingDate: closingDate }); showToast("Caisse clôturée avec succès", "info"); };
-
-  // --- UPDATED CREATE STORE ---
+  
   const handleCreateStore = async (settings: StoreSettings, adminUser: User, adminEmployee: Employee) => {
     setIsCreatingStoreLoading(true);
     setLoadingProgress(0);
@@ -290,7 +303,6 @@ const App: React.FC = () => {
     const progressInterval = setInterval(() => { setLoadingProgress(prev => Math.min(prev + 5, 90)); }, 100);
     const newStoreId = `store_${Date.now()}`;
     
-    // Assign All Permissions to Admin
     const allPermissions: string[] = [];
     PERMISSION_CATEGORIES.forEach(cat => { cat.actions.forEach(act => { allPermissions.push(`${cat.id}.${act.id}`); }); });
     adminUser.permissions = allPermissions;
@@ -299,7 +311,6 @@ const App: React.FC = () => {
 
     try {
       await createStoreInDB(newStoreId, newMetadata, settings, adminUser, adminEmployee);
-      
       clearInterval(progressInterval);
       setLoadingProgress(100);
       setLoadingText('Entreprise prête !');
@@ -379,56 +390,21 @@ const App: React.FC = () => {
   const handleImportData = () => alert("L'importation écrase la base de données. Fonction désactivée par sécurité en mode Cloud.");
   const handleCloudSync = () => handleExportData();
   const t = (key: string) => getTranslation(storeSettings.language, key);
+  
   const hasAccess = (view: ViewState): boolean => {
       if (!currentUser) return false;
       const mapping: Record<ViewState, string> = { [ViewState.LOGIN]: '', [ViewState.MENU]: '', [ViewState.DASHBOARD]: 'dashboard.view', [ViewState.INVENTORY]: 'inventory.view', [ViewState.COMMERCIAL]: 'commercial.view', [ViewState.EXPENSES]: 'expenses.view', [ViewState.PERSONNEL]: 'personnel.view', [ViewState.CUSTOMERS]: 'customers.view', [ViewState.SUPPLIERS]: 'suppliers.view', [ViewState.TREASURY]: 'treasury.view', [ViewState.USERS]: 'users.view', [ViewState.AI_INSIGHTS]: 'ai.view', [ViewState.SETTINGS]: 'settings.view', };
       const req = mapping[view]; if (!req) return true; return currentUser.permissions.includes(req);
   };
 
-  // --- RENDER SCREEN LOADER AVEC ANIMATION LOGO ---
-  if (isLaunching || isCreatingStoreLoading) {
-    return (
-      <div className="fixed inset-0 bg-slate-900 z-[100] flex flex-col items-center justify-center animate-fade-in">
-         {/* CONTAINER DU LOGO ANIMÉ */}
-         <div className="relative mb-10 w-32 h-32 flex items-center justify-center">
-            {/* Cercle Glow qui tourne */}
-            <div className="absolute inset-0 rounded-full border-4 border-t-indigo-500 border-r-indigo-500/50 border-b-indigo-500/10 border-l-indigo-500/50 animate-spin"></div>
-            
-            {/* Cercle Pulse interne */}
-            <div className="absolute inset-2 bg-indigo-500/20 rounded-full animate-pulse"></div>
-            
-            {/* L'image du logo avec effet "Breathing" */}
-            <img 
-              src={logoUrl} 
-              alt="Gesmind Logo" 
-              className="relative w-24 h-24 object-contain z-10 drop-shadow-[0_0_15px_rgba(99,102,241,0.6)] animate-[pulse_3s_ease-in-out_infinite]" 
-            />
-         </div>
+  // --- RENDER SCREEN LOADER ---
+  if (isLaunching) {
+    return <SplashScreen onFinish={() => setIsLaunching(false)} />;
+  }
 
-         {/* BARRE DE PROGRESSION RÉELLE */}
-         <div className="w-64 bg-slate-800 rounded-full h-3 overflow-hidden shadow-inner border border-slate-700">
-            <div 
-              className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 rounded-full transition-all duration-500 ease-out shadow-[0_0_10px_rgba(99,102,241,0.5)]" 
-              style={{ width: `${loadingProgress}%` }}
-            ></div>
-         </div>
-         
-         <div className="mt-4 flex flex-col items-center space-y-1">
-            <p className="text-slate-200 text-sm font-bold tracking-wide font-mono animate-pulse">
-              {loadingText}
-            </p>
-            <p className="text-slate-500 text-xs">
-              {Math.round(loadingProgress)}%
-            </p>
-         </div>
-
-         <div className="absolute bottom-8 text-[10px] text-slate-600 font-bold uppercase tracking-widest flex items-center space-x-2">
-            <span>Gesmind Enterprise</span>
-            <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-            <span>v{process.env.PACKAGE_VERSION}</span>
-         </div>
-      </div>
-    );
+  // --- RENDER CREATION LOADER (Replaced with LoadingScreen) ---
+  if (isCreatingStoreLoading) {
+      return <LoadingScreen message={loadingText} />;
   }
 
   if (!currentUser) {
@@ -488,7 +464,6 @@ const App: React.FC = () => {
     );
   }
 
-  // --- ROUTING RENDER ---
   const renderContent = () => {
     if (!hasAccess(currentView)) { return <div className="p-8 text-center text-slate-500">Accès Refusé <br/><button onClick={() => setCurrentView(ViewState.MENU)} className="text-indigo-600 font-bold mt-2">Retour au menu</button></div>; }
     switch (currentView) {
@@ -499,7 +474,7 @@ const App: React.FC = () => {
       case ViewState.PERSONNEL: return <Personnel employees={employees} currency={selectedCurrency} onAddEmployee={handleAddEmployee} onUpdateEmployee={handleUpdateEmployee} onDeleteEmployee={handleDeleteEmployee} onPaySalary={handlePaySalary} />;
       case ViewState.CUSTOMERS: return <Customers customers={customers} onAddCustomer={handleAddCustomer} onUpdateCustomer={handleUpdateCustomer} onDeleteCustomer={handleDeleteCustomer} currency={selectedCurrency} />;
       case ViewState.SUPPLIERS: return <Suppliers suppliers={suppliers} onAddSupplier={handleAddSupplier} onUpdateSupplier={handleUpdateSupplier} onDeleteSupplier={handleDeleteSupplier} currency={selectedCurrency} />;
-      case ViewState.TREASURY: return <Treasury movements={cashMovements} closings={cashClosings} transactions={transactions} onAddMovement={handleAddCashMovement} onClosePeriod={() => handleCloseCash('MANUAL')} onSettleTransaction={handleSettleTransaction} lastClosingDate={storeSettings.lastClosingDate} currency={selectedCurrency} currentUser={currentUser} customers={customers} supervisionTarget={supervisionTarget} />;
+      case ViewState.TREASURY: return <Treasury movements={cashMovements} closings={cashClosings} transactions={transactions} onAddMovement={handleAddCashMovement} onClosePeriod={() => {}} onSettleTransaction={handleSettleTransaction} lastClosingDate={storeSettings.lastClosingDate} currency={selectedCurrency} currentUser={currentUser} customers={customers} supervisionTarget={supervisionTarget} />;
       case ViewState.USERS: return <Users users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} currentUser={currentUser} onSupervise={handleStartSupervision} onLoginAs={handleLogin} />;
       case ViewState.AI_INSIGHTS: return <AIAdvisor items={inventory} currency={selectedCurrency} />;
       case ViewState.SETTINGS: return <Settings currentSettings={storeSettings} onUpdateSettings={saveStoreSettings} currentCurrency={currencyCode} onUpdateCurrency={saveCurrency} currentUser={currentUser} onUpdateUser={handleUpdateUser} onExportData={handleExportData} onImportData={handleImportData} onCloudSync={handleCloudSync} lang={storeSettings.language} inventory={inventory} transactions={transactions} expenses={expenses} cashMovements={cashMovements} />;

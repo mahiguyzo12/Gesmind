@@ -1,8 +1,9 @@
 
 import React, { useState } from 'react';
 import { Expense, ExpenseCategory, Currency, User } from '../types';
-import { Plus, Trash2, Tag, Calendar, Banknote, Filter, PieChart, TrendingDown, AlertTriangle } from 'lucide-react';
+import { Plus, Trash2, Tag, Calendar, Banknote, Filter, PieChart, TrendingDown, AlertTriangle, X, Lock } from 'lucide-react';
 import { ResponsiveContainer, PieChart as RechartsPie, Pie, Cell, Tooltip, Legend } from 'recharts';
+import { checkTodayClosingStatus } from '../src/services/firestoreService';
 
 interface ExpensesProps {
   expenses: Expense[];
@@ -36,6 +37,10 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, onAddExpense, onDe
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
+  // Lock State
+  const [isLockModalOpen, setIsLockModalOpen] = useState(false);
+  const [lockInfo, setLockInfo] = useState<{reopeningTime: string, remainingText: string} | null>(null);
+
   // Permission Check
   const canManageExpenses = currentUser.permissions.includes('expenses.manage') || currentUser.role === 'ADMIN';
 
@@ -50,6 +55,26 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, onAddExpense, onDe
       minimumFractionDigits: currency.code === 'XOF' ? 0 : 2,
       maximumFractionDigits: currency.code === 'XOF' ? 0 : 2
     }).format(val * currency.rate);
+  };
+
+  const handleOpenAddModal = async () => {
+      const storeId = localStorage.getItem('gesmind_last_store_id');
+      if (storeId) {
+          const result = await checkTodayClosingStatus(storeId, currentUser.id);
+          if (result.isLocked && result.reopenAt) {
+              const diffMs = result.reopenAt.getTime() - new Date().getTime();
+              const hours = Math.floor(diffMs / (1000 * 60 * 60));
+              const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+              
+              setLockInfo({ 
+                  reopeningTime: "00h00", 
+                  remainingText: `${hours} heures ${minutes} minutes`
+              });
+              setIsLockModalOpen(true);
+              return;
+          }
+      }
+      setIsModalOpen(true);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -109,7 +134,7 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, onAddExpense, onDe
         </div>
         {canManageExpenses && (
           <button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleOpenAddModal}
             className="bg-rose-600 hover:bg-rose-700 text-white px-4 py-2.5 rounded-xl font-medium flex items-center shadow-lg shadow-rose-200 transition-colors"
           >
             <Plus className="w-5 h-5 mr-2" /> Ajouter une dépense
@@ -306,6 +331,44 @@ export const Expenses: React.FC<ExpensesProps> = ({ expenses, onAddExpense, onDe
             </form>
           </div>
         </div>
+      )}
+
+      {/* Lock Modal */}
+      {isLockModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center animate-fade-in-up border-b-4 border-red-600 relative">
+                  <button 
+                      onClick={() => setIsLockModalOpen(false)} 
+                      className="absolute top-3 right-3 text-slate-400 hover:text-slate-600"
+                  >
+                      <X className="w-6 h-6" />
+                  </button>
+                  
+                  <div className="w-20 h-20 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
+                      <Lock className="w-10 h-10 text-red-600" />
+                  </div>
+                  
+                  <h3 className="text-2xl font-bold text-slate-800 mb-2">Caisse actuellement clôturée</h3>
+                  
+                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 mb-6 mt-4">
+                      <div className="flex justify-between items-center mb-2">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Réouverture automatique</span>
+                          <span className="font-mono font-bold text-slate-800">{lockInfo?.reopeningTime}</span>
+                      </div>
+                      <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Temps restant</span>
+                          <span className="font-bold text-indigo-600">{lockInfo?.remainingText}</span>
+                      </div>
+                  </div>
+                  
+                  <button 
+                      onClick={() => setIsLockModalOpen(false)} 
+                      className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-colors"
+                  >
+                      OK
+                  </button>
+              </div>
+          </div>
       )}
 
       {/* Delete Confirmation Modal */}

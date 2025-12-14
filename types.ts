@@ -6,13 +6,13 @@ export interface InventoryItem {
   category: string;
   quantity: number;
   minQuantity: number;
-  purchasePrice: number; // Nouveau: Prix d'achat en Devise de Base (EUR)
-  price: number; // Prix de vente en Devise de Base (EUR)
+  purchasePrice: number; 
+  price: number; 
   supplier: string;
   location: string;
   description: string;
   lastUpdated: string;
-  createdBy?: string; // ID de l'utilisateur propriétaire du stock
+  createdBy?: string; 
 }
 
 export enum ViewState {
@@ -52,19 +52,19 @@ export interface StoreSettings {
   website?: string;
   
   // Infos Légales & Fiscales
-  rccm?: string; // Registre du Commerce
-  nif?: string; // Numéro d'Identification Fiscale (Impôts)
-  legalStatus?: string; // SARL, SA, EI, etc.
+  rccm?: string; 
+  nif?: string; 
+  legalStatus?: string; 
   
-  logoUrl?: string; // Base64 string du logo
-  recoveryKey?: string; // Clé de secours pour l'admin
+  logoUrl?: string; 
+  recoveryKey?: string; 
   language: string;
   lastCloudSync?: string;
   cloudProvider?: CloudProvider;
-  lastClosingDate?: string; // Timestamp de la dernière clôture de caisse
-  githubRepo?: string; // Format: "username/repo" pour les mises à jour
+  lastClosingDate?: string; 
+  githubRepo?: string; 
   themeMode?: ThemeMode;
-  themeColor?: string; // Hex code for primary color
+  themeColor?: string; 
 }
 
 export interface AIAnalysisResult {
@@ -85,17 +85,18 @@ export interface GeneratedItemData {
 export interface Currency {
   code: string;
   label: string;
-  rate: number; // Taux de change par rapport à la devise de base (EUR)
+  rate: number; 
   symbol: string;
 }
 
 export type TransactionType = 'SALE' | 'PURCHASE';
+export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE_MONEY' | 'CHECK' | 'OTHER';
 
 export interface TransactionItem {
   productId: string;
   productName: string;
   quantity: number;
-  unitPrice: number; // Prix au moment de la transaction (en devise de base)
+  unitPrice: number; 
 }
 
 export interface Transaction {
@@ -103,15 +104,16 @@ export interface Transaction {
   type: TransactionType;
   date: string;
   items: TransactionItem[];
-  totalAmount: number; // Total en devise de base
-  amountPaid: number; // Montant versé par le client/au fournisseur
-  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID'; // Soldé ou non
-  paidAt?: string; // Date exacte du solde complet
+  totalAmount: number; 
+  amountPaid: number; 
+  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID'; 
+  paymentMethod?: PaymentMethod; // Important pour le calcul de caisse
+  isLocked?: boolean; // Verrouillage après clôture
+  paidAt?: string; 
   status: 'COMPLETED' | 'PENDING' | 'CANCELLED';
-  sellerId: string; // ID de l'utilisateur qui a fait la saisie
+  sellerId: string; // registerId conceptuel
   sellerName: string;
   
-  // Relations optionnelles
   customerId?: string;
   customerName?: string;
   supplierId?: string;
@@ -127,8 +129,8 @@ export interface Expense {
   date: string;
   category: ExpenseCategory;
   description: string;
-  amount: number; // Montant en devise de base
-  paidBy: string; // Nom de l'utilisateur qui a enregistré la dépense
+  amount: number; 
+  paidBy: string; 
 }
 
 export type UserRole = 'ADMIN' | 'SELLER' | 'USER';
@@ -136,31 +138,29 @@ export type UserRole = 'ADMIN' | 'SELLER' | 'USER';
 export interface EmployeeDocument {
   id: string;
   name: string;
-  type: string; // 'CONTRACT', 'ID', 'OTHER'
+  type: string; 
   date: string;
-  content: string; // Base64
+  content: string; 
 }
 
-// --- UTILISATEUR (Compte d'accès Application) ---
 export interface User {
   id: string;
-  name: string; // Pseudo de connexion
+  name: string; 
   role: UserRole;
-  pin: string; // Code PIN
+  pin: string; 
   avatar?: string;
-  email?: string; // Contact direct utilisateur
-  phone?: string; // Contact direct utilisateur
-  commissionRate?: number; // Pourcentage de commission sur les ventes (lié au compte vendeur)
-  permissions: string[]; // Liste des IDs de permission (ex: 'inventory.view', 'inventory.add')
-  lastLogin?: string; // Timestamp de la dernière connexion
+  email?: string; 
+  phone?: string; 
+  commissionRate?: number; 
+  permissions: string[]; 
+  lastLogin?: string; 
 }
 
-// --- EMPLOYÉ (Ressource Humaine Physique) ---
 export interface Employee {
   id: string;
   fullName: string;
-  photo?: string; // Photo d'identité
-  jobTitle: string; // Intitulé du poste
+  photo?: string; 
+  jobTitle: string; 
   phone?: string;
   email?: string;
   address?: string;
@@ -168,27 +168,24 @@ export interface Employee {
   country?: string;
   zipCode?: string;
   
-  // Données Personnelles
   gender?: 'M' | 'F';
-  birthDate?: string; // Date de naissance
-  placeOfBirth?: string; // Lieu de naissance
+  birthDate?: string; 
+  placeOfBirth?: string; 
   residence?: string;
   childrenCount?: number;
   maritalStatus?: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
   
-  // Contact Urgence
   emergencyContact?: {
     name: string;
     relationship: string;
     phone: string;
   };
 
-  // Données Contrat & Paie
-  baseSalary: number; // Salaire fixe mensuel
+  baseSalary: number; 
   hireDate: string;
-  department?: string; // Rayon / Service
+  department?: string; 
   
-  documents: EmployeeDocument[]; // Contrats, CNI, etc.
+  documents: EmployeeDocument[]; 
   notes?: string;
 }
 
@@ -198,7 +195,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
-  totalSpent: number; // Total des achats en devise de base
+  totalSpent: number; 
   lastPurchaseDate?: string;
   notes?: string;
 }
@@ -214,28 +211,56 @@ export interface Supplier {
   notes?: string;
 }
 
-export type CashMovementType = 'SALE' | 'PURCHASE' | 'DEPOSIT' | 'WITHDRAWAL' | 'EXPENSE';
+export type CashMovementType = 'SALE' | 'PURCHASE' | 'DEPOSIT' | 'WITHDRAWAL' | 'EXPENSE' | 'BANK_DEPOSIT';
 
 export interface CashMovement {
   id: string;
   date: string;
   type: CashMovementType;
-  amount: number; // En devise de base
+  amount: number; 
   description: string;
-  performedBy: string; // Nom de l'utilisateur
+  performedBy: string; 
 }
 
 export interface CashClosing {
+  id: string; // Format STRICT: YYYY-MM-DD_registerId
+  date: string; // Date de clôture (ISO)
+  registerId: string; // ID de la caisse/utilisateur
+  closedBy: string; // "user" ou "system"
+  
+  // Totaux calculés
+  totalSales: number; // Ventes totales
+  
+  // Répartition Paiements
+  amountCash: number;
+  amountMobileMoney: number;
+  amountCard: number;
+  
+  // Écart de caisse
+  cashExpected: number; // Théorique
+  cashReal: number; // Saisi par l'utilisateur (ou = expected si auto)
+  difference: number; // Real - Expected
+  
+  status: 'closed';
+  autoClosed: boolean; // True si généré par le système
+  comment?: string;
+  
+  // Legacy fields compatibility (optional but kept for transition)
+  totalCashIn?: number; 
+  totalCashOut?: number; 
+  periodStart?: string; 
+  openingBalance?: number; 
+  closingBalance?: number; 
+  totalIn?: number; 
+  totalOut?: number; 
+  type?: 'MANUAL' | 'AUTO';
+}
+
+export interface RegisterStatus {
   id: string;
-  date: string; // Date de la clôture
-  periodStart: string; // Date du début de la période clôturée
-  openingBalance: number; // Solde au début de la journée/période
-  closingBalance: number; // Solde à la fin
-  totalIn: number; // Total Entrées (Ventes + Dépôts)
-  totalOut: number; // Total Sorties (Achats + Retraits + Dépenses)
-  cashCount?: number; // Montant réel compté (si écart)
-  type: 'MANUAL' | 'AUTO';
-  closedBy: string; // "Système" ou Nom Admin
+  status: 'open' | 'locked';
+  lockedUntil?: string; // ISO Date String
+  lockedReason?: 'daily_closure' | 'auto_closure';
 }
 
 export interface BackupData {
@@ -245,7 +270,7 @@ export interface BackupData {
   currency: string;
   inventory: InventoryItem[];
   users: User[];
-  employees: Employee[]; // Backup des employés
+  employees: Employee[]; 
   customers: Customer[];
   suppliers: Supplier[];
   transactions: Transaction[];

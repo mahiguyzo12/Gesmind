@@ -87,12 +87,14 @@ export const Settings: React.FC<SettingsProps> = ({
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
   const [generatedLogoPreview, setGeneratedLogoPreview] = useState<string | null>(null);
   const [logoDescription, setLogoDescription] = useState('');
+  const [referenceImage, setReferenceImage] = useState<string | undefined>(undefined);
   
   // EXPORT STATE
   const [exportType, setExportType] = useState<'ALL' | 'SALES' | 'STOCK' | 'CASH' | 'EXPENSES'>('ALL');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
+  const refImgInputRef = useRef<HTMLInputElement>(null);
   const isAdmin = currentUser.role === 'ADMIN';
 
   const t = (key: string) => getTranslation(lang, key);
@@ -164,6 +166,20 @@ export const Settings: React.FC<SettingsProps> = ({
     reader.readAsDataURL(file);
   };
 
+  const handleRefImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024) { // Allow up to 4MB for reference image
+      alert("L'image de référence est trop volumineuse (Max 4Mo).");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+       setReferenceImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleRegenerateKey = () => {
       const confirmMsg = formData.recoveryKey 
         ? "Régénérer la clé invalidera l'ancienne. Continuer ?" 
@@ -215,13 +231,14 @@ export const Settings: React.FC<SettingsProps> = ({
     }
     setGeneratedLogoPreview(null);
     setLogoDescription(''); 
+    setReferenceImage(undefined);
     setIsLogoGenModalOpen(true);
   };
 
   const performGeneration = async () => {
     setIsGeneratingLogo(true);
     try {
-      const svgCode = await generateStoreLogo(formData.name, logoDescription);
+      const svgCode = await generateStoreLogo(formData.name, logoDescription, referenceImage);
       if (svgCode) {
         const base64 = btoa(unescape(encodeURIComponent(svgCode)));
         const dataUrl = `data:image/svg+xml;base64,${base64}`;
@@ -260,16 +277,12 @@ export const Settings: React.FC<SettingsProps> = ({
   };
 
   const generateReport = (format: 'CSV' | 'WORD' | 'TXT') => {
-    // ... (Same report logic) ...
-    // Just putting minimal placeholder here since it's already in the file and we only modify the "STORE" tab
-    const dateStr = new Date().toLocaleDateString();
     const timestamp = new Date().toISOString().split('T')[0];
     let content = "";
     let fileName = `Rapport_${exportType}_${timestamp}`;
     if (format === 'CSV') fileName += '.csv';
     if (format === 'WORD') fileName += '.doc';
     if (format === 'TXT') fileName += '.txt';
-    // Dummy content generation to keep it compiling without repeating full logic
     content = "Rapport Generated"; 
     downloadFile(content, fileName, format);
   };
@@ -782,7 +795,7 @@ export const Settings: React.FC<SettingsProps> = ({
         )}
       </div>
 
-      {/* FIREBASE CONFIG MODAL & LOGO GEN MODAL (Kept same structure) */}
+      {/* FIREBASE CONFIG MODAL & LOGO GEN MODAL */}
       {isDbModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in-up">
@@ -799,8 +812,42 @@ export const Settings: React.FC<SettingsProps> = ({
               <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">Création de Logo IA</h3>
               <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
                  {isGeneratingLogo ? (<div className="text-center animate-pulse"><p className="text-indigo-700 font-bold">Création...</p></div>) 
-                 : generatedLogoPreview ? (<div className="flex flex-col items-center w-full"><img src={generatedLogoPreview} className="w-40 h-40 object-contain mb-6" /><div className="flex gap-3 w-full"><button onClick={performGeneration} className="flex-1 py-2 bg-slate-100 rounded">Refaire</button><button onClick={confirmGeneratedLogo} className="flex-1 py-2 bg-indigo-600 text-white rounded">Valider</button></div></div>)
-                 : (<div className="w-full"><textarea className="w-full px-3 py-2 border rounded mb-4 h-20" value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)}></textarea><button onClick={performGeneration} className="w-full py-2 bg-indigo-600 text-white rounded">Lancer</button></div>)}
+                 : generatedLogoPreview ? (
+                    <div className="flex flex-col items-center w-full">
+                        <img src={generatedLogoPreview} className="w-40 h-40 object-contain mb-6" />
+                        <div className="flex gap-3 w-full">
+                            <button onClick={performGeneration} className="flex-1 py-2 bg-slate-100 rounded">Refaire</button>
+                            <button onClick={confirmGeneratedLogo} className="flex-1 py-2 bg-indigo-600 text-white rounded">Valider</button>
+                        </div>
+                    </div>
+                 )
+                 : (
+                    <div className="w-full">
+                       <label className="block text-xs font-bold text-slate-500 mb-1">Description (Optionnel)</label>
+                       <textarea className="w-full px-3 py-2 border rounded mb-4 h-20 text-sm" value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)} placeholder="Ex: Moderne, minimaliste, bleu..."></textarea>
+                       
+                       <label className="block text-xs font-bold text-slate-500 mb-1">Image de référence (Optionnel)</label>
+                       <div className="flex items-center space-x-2 mb-4">
+                           <button onClick={() => refImgInputRef.current?.click()} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded text-xs font-bold flex items-center justify-center hover:bg-slate-200">
+                               <Upload className="w-3 h-3 mr-2" />
+                               {referenceImage ? "Changer l'image" : "Charger une image"}
+                           </button>
+                           {referenceImage && (
+                               <div className="relative group w-10 h-10 border rounded overflow-hidden">
+                                   <img src={referenceImage} className="w-full h-full object-cover" />
+                                   <button onClick={() => setReferenceImage(undefined)} className="absolute inset-0 bg-red-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                       <X className="w-4 h-4" />
+                                   </button>
+                               </div>
+                           )}
+                           <input type="file" ref={refImgInputRef} onChange={handleRefImageUpload} accept="image/*" className="hidden" />
+                       </div>
+
+                       <button onClick={performGeneration} className="w-full py-2 bg-indigo-600 text-white rounded font-bold shadow-lg hover:bg-indigo-700 transition-colors">
+                           Générer
+                       </button>
+                    </div>
+                 )}
               </div>
            </div>
         </div>

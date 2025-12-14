@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { InventoryItem, Currency, Transaction, Expense, User } from '../types';
-import { TrendingUp, AlertTriangle, DollarSign, PackageCheck, ShoppingBag, CreditCard, PieChart, TrendingDown, Shield, Eye } from 'lucide-react';
+import { TrendingUp, AlertTriangle, DollarSign, PackageCheck, ShoppingBag, CreditCard, PieChart, TrendingDown, Shield, Eye, Wallet, BarChart3, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 interface DashboardProps {
@@ -43,20 +43,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, currency, trans
     ? inventory.filter(item => item.createdBy === filterId)
     : inventory;
 
-  // --- CALCULS ---
-  const totalItems = myStock.length;
-  // Stats basées sur le stock filtré
-  const totalStock = myStock.reduce((acc, item) => acc + item.quantity, 0);
-  const lowStockItems = myStock.filter(item => item.quantity <= item.minQuantity);
-
-  // Financial Stats (Basées sur les données filtrées)
-  const sales = myTransactions.filter(t => t.type === 'SALE').reduce((acc, t) => acc + t.totalAmount, 0) * currency.rate;
-  // Les achats stock sont généralement faits par l'admin, les vendeurs voient 0 ou leurs propres achats
-  const purchases = myTransactions.filter(t => t.type === 'PURCHASE').reduce((acc, t) => acc + t.totalAmount, 0) * currency.rate;
+  // --- CALCULS (Séparation Activité vs Trésorerie) ---
   
-  const totalExpenses = myExpenses.reduce((acc, e) => acc + e.amount, 0) * currency.rate;
+  // 1. ACTIVITÉ ÉCONOMIQUE (Factures)
+  // Total Ventes (Facturées, payées ou non)
+  const totalSalesVolume = myTransactions.filter(t => t.type === 'SALE').reduce((acc, t) => acc + t.totalAmount, 0) * currency.rate;
+  
+  // Total Achats (Facturés, payés ou non)
+  const totalPurchasesVolume = myTransactions.filter(t => t.type === 'PURCHASE').reduce((acc, t) => acc + t.totalAmount, 0) * currency.rate;
 
-  // Calcul Marge sur les ventes filtrées
+  // Marge Brute Théorique (basée sur les factures de vente)
   let grossProfit = 0;
   myTransactions.filter(t => t.type === 'SALE').forEach(tx => {
      tx.items.forEach(item => {
@@ -66,9 +62,24 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, currency, trans
         grossProfit += margin * item.quantity;
      });
   });
-  
   const realizedGrossProfit = grossProfit * currency.rate;
-  const netProfit = realizedGrossProfit - totalExpenses;
+
+  // 2. TRÉSORERIE (Cash Réel)
+  // Entrées Cash (Ventes payées)
+  const cashInSales = myTransactions.filter(t => t.type === 'SALE').reduce((acc, t) => acc + t.amountPaid, 0) * currency.rate;
+  // Sorties Cash (Achats payés)
+  const cashOutPurchases = myTransactions.filter(t => t.type === 'PURCHASE').reduce((acc, t) => acc + t.amountPaid, 0) * currency.rate;
+  // Dépenses (Toujours cash/débit immédiat dans ce modèle simplifié)
+  const cashOutExpenses = myExpenses.reduce((acc, e) => acc + e.amount, 0) * currency.rate;
+  
+  // Solde Trésorerie (Flux nets)
+  // Note: Ce calcul est une approximation basée sur les transactions visibles. 
+  // La "vraie" trésorerie inclut aussi les apports/retraits manuels (via Treasury), non dispo ici en props simple.
+  // On affiche donc le "Cash Flow Opérationnel"
+  const operatingCashFlow = cashInSales - cashOutPurchases - cashOutExpenses;
+
+  const totalItems = myStock.length;
+  const lowStockItems = myStock.filter(item => item.quantity <= item.minQuantity);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('fr-FR', {
@@ -107,78 +118,89 @@ export const Dashboard: React.FC<DashboardProps> = ({ inventory, currency, trans
         </div>
       </header>
 
-      {/* KPI Cards Row 1 - Financials */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        
-        {/* CA */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                  {!shouldFilter ? "Chiffre d'Affaires" : "Ventes"}
-              </p>
-              <h3 className="text-2xl font-bold text-blue-600 mt-1">{formatCurrency(sales)}</h3>
+      {/* SECTION 1: PERFORMANCE ÉCONOMIQUE (Factures) */}
+      <div className="mb-2 flex items-center space-x-2">
+          <Activity className="w-5 h-5 text-indigo-600" />
+          <h3 className="text-lg font-bold text-slate-700">Activité Globale (Facturé)</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {/* CA (Ventes) */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-24 h-24 bg-blue-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-start">
+                <div>
+                <p className="text-sm font-medium text-slate-500">Chiffre d'Affaires</p>
+                <h3 className="text-2xl font-bold text-blue-700 mt-1">{formatCurrency(totalSalesVolume)}</h3>
+                </div>
+                <div className="p-2 bg-blue-100 rounded-lg text-blue-600"><ShoppingBag className="w-5 h-5" /></div>
             </div>
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <ShoppingBag className="w-5 h-5 text-blue-600" />
-            </div>
+            <p className="mt-4 text-xs text-slate-400">Total ventes (encaissées ou non)</p>
           </div>
-          <p className="mt-4 text-xs text-slate-400">
-              {isAdmin && !isSupervisionMode ? "Total ventes entreprise" : "Total ventes utilisateur"}
-          </p>
         </div>
 
-        {/* Dépenses */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-slate-500">
-                  Dépenses
-              </p>
-              <h3 className="text-2xl font-bold text-rose-600 mt-1">{formatCurrency(totalExpenses)}</h3>
+        {/* Volume Achats */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-24 h-24 bg-purple-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-start">
+                <div>
+                <p className="text-sm font-medium text-slate-500">Volume d'Achats</p>
+                <h3 className="text-2xl font-bold text-purple-700 mt-1">{formatCurrency(totalPurchasesVolume)}</h3>
+                </div>
+                <div className="p-2 bg-purple-100 rounded-lg text-purple-600"><PackageCheck className="w-5 h-5" /></div>
             </div>
-            <div className="p-2 bg-rose-50 rounded-lg">
-              <TrendingDown className="w-5 h-5 text-rose-600" />
-            </div>
+            <p className="mt-4 text-xs text-slate-400">Total factures fournisseurs</p>
           </div>
-          <p className="mt-4 text-xs text-slate-400">Charges enregistrées</p>
         </div>
 
-        {/* Marge Brute */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between">
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Marge Commerciale</p>
-              <h3 className="text-2xl font-bold text-indigo-600 mt-1">{formatCurrency(realizedGrossProfit)}</h3>
+        {/* Marge Commerciale */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between relative overflow-hidden group">
+          <div className="absolute right-0 top-0 w-24 h-24 bg-emerald-50 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+          <div className="relative z-10">
+            <div className="flex justify-between items-start">
+                <div>
+                <p className="text-sm font-medium text-slate-500">Marge Commerciale</p>
+                <h3 className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(realizedGrossProfit)}</h3>
+                </div>
+                <div className="p-2 bg-emerald-100 rounded-lg text-emerald-600"><PieChart className="w-5 h-5" /></div>
             </div>
-            <div className="p-2 bg-indigo-50 rounded-lg">
-              <PieChart className="w-5 h-5 text-indigo-600" />
-            </div>
+            <p className="mt-4 text-xs text-slate-400">Sur ventes réalisées</p>
           </div>
-           <p className="mt-4 text-xs text-indigo-400">Sur les ventes réalisées</p>
-        </div>
-
-        {/* Résultat Net */}
-        <div className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between ${netProfit >= 0 ? 'border-l-4 border-l-emerald-500' : 'border-l-4 border-l-red-500'}`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <p className="text-sm font-medium text-slate-500">Résultat Net</p>
-              <h3 className={`text-2xl font-bold mt-1 ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {formatCurrency(netProfit)}
-              </h3>
-            </div>
-            <div className={`p-2 rounded-lg ${netProfit >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-              <TrendingUp className={`w-5 h-5 ${netProfit >= 0 ? 'text-emerald-600' : 'text-red-600'}`} />
-            </div>
-          </div>
-          <p className="mt-4 text-xs text-slate-400">Bénéfice (Marge - Dépenses)</p>
         </div>
       </div>
 
-      {/* Row 2 - Stock Status */}
+      {/* SECTION 2: TRÉSORERIE (Cash) */}
+      <div className="mb-2 flex items-center space-x-2">
+          <Wallet className="w-5 h-5 text-emerald-600" />
+          <h3 className="text-lg font-bold text-slate-700">Flux de Trésorerie (Réel)</h3>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">Entrées (Ventes)</span>
+            <div className="text-lg font-bold text-emerald-600 mt-1">+{formatCurrency(cashInSales)}</div>
+         </div>
+         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">Sorties (Achats)</span>
+            <div className="text-lg font-bold text-rose-500 mt-1">-{formatCurrency(cashOutPurchases)}</div>
+         </div>
+         <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <span className="text-xs font-bold text-slate-500 uppercase">Dépenses (Charges)</span>
+            <div className="text-lg font-bold text-orange-500 mt-1">-{formatCurrency(cashOutExpenses)}</div>
+         </div>
+         <div className={`p-4 rounded-xl border ${operatingCashFlow >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <span className="text-xs font-bold text-slate-500 uppercase">Flux Net Opérationnel</span>
+            <div className={`text-xl font-bold mt-1 ${operatingCashFlow >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                {operatingCashFlow > 0 ? '+' : ''}{formatCurrency(operatingCashFlow)}
+            </div>
+         </div>
+      </div>
+
+      {/* Row 3 - Stock Status */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-          <h3 className="text-lg font-bold text-slate-800 mb-6">
+          <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center">
+             <BarChart3 className="w-5 h-5 mr-2 text-indigo-500" />
              Niveaux de Stock {isAdmin && !isSupervisionMode ? "(Global)" : `(${targetUser?.name})`}
           </h3>
           <div className="h-80 w-full">

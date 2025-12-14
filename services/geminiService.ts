@@ -1,11 +1,11 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { InventoryItem, GeneratedItemData, Currency } from "../types";
 
-// Initialisation avec la librairie standard et la clé injectée via Vite
+// Initialisation avec la nouvelle librairie @google/genai
 // La clé est définie dans vite.config.ts (process.env.API_KEY)
 const API_KEY = process.env.API_KEY || "";
-const genAI = new GoogleGenerativeAI(API_KEY);
+const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 /**
  * Analyzes the current inventory to provide insights, alerts, and suggestions.
@@ -14,7 +14,6 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
   if (!API_KEY) throw new Error("Clé API Gemini manquante. Vérifiez la configuration du build.");
 
   try {
-    // Utilisation du modèle gemini-2.5-flash, plus récent et recommandé
     // Convert prices to selected currency for the prompt context
     const inventorySummary = JSON.stringify(inventory.map(item => ({
       name: item.name,
@@ -44,10 +43,14 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
         Données: ${inventorySummary}
       `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text() || "";
+    // Utilisation de la nouvelle syntaxe ai.models.generateContent avec le modèle gemini-2.5-flash
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
+
+    // Accès direct à la propriété .text (pas une fonction dans le nouveau SDK)
+    const text = response.text || "";
     
     // Nettoyage au cas où le modèle renvoie quand même du markdown
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -81,11 +84,12 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
       Note: suggestedPrice doit être un nombre en EUROS.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    const text = response.text() || "";
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+    });
 
+    const text = response.text || "";
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return JSON.parse(cleanJson);
@@ -97,49 +101,72 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
 
 /**
  * Generates an SVG Logo based on the store name and optional description.
+ * Now supports an optional reference image for style transfer/inspiration.
  */
-export const generateStoreLogo = async (storeName: string, description?: string): Promise<string> => {
+export const generateStoreLogo = async (storeName: string, description?: string, referenceImageBase64?: string): Promise<string> => {
   if (!API_KEY) throw new Error("Clé API Gemini manquante.");
 
   try {
     const userDesc = description ? `Style/Description souhaitée : "${description}".` : "Style : Moderne, Minimaliste, Professionnel.";
 
-    const prompt = `
-      Crée un logo vectoriel SVG pour une entreprise nommée "${storeName}".
+    let promptText = `
+      Tu es un expert en design de logo vectoriel (SVG).
+      Crée un logo pour une entreprise nommée "${storeName}".
       
       Instructions de design :
       1. ${userDesc}
-      2. Inclus le nom "${storeName}" ou ses initiales de manière artistique si pertinent pour le style.
-      3. Utilise des couleurs professionnelles sur fond transparent.
-      4. Dimensions: viewBox="0 0 200 200".
-      5. Le SVG doit être simple et propre.
+      2. Le logo doit être vectoriel (SVG), simple, iconique et professionnel.
+      3. Dimensions: viewBox="0 0 512 512".
+      4. Utilise des couleurs attrayantes.
+      5. IMPORTANT: Retourne SEULEMENT le code XML du <svg>. Pas de balises markdown (\`\`\`xml ou \`\`\`svg), pas de texte introductif.
       
-      RÉPONDS UNIQUEMENT AVEC LE CODE SVG BRUT. Pas de markdown (pas de \`\`\`), pas de texte avant ou après. Juste <svg>...</svg>.
+      Code SVG :
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    let svgText = response.text() || "";
+    let contentParts: any[] = [{ text: promptText }];
 
-    // Nettoyage agressif du markdown
-    svgText = svgText.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+    if (referenceImageBase64) {
+        // Extraction du format base64 pur et du mimeType
+        const parts = referenceImageBase64.split(',');
+        const base64Data = parts[1] || referenceImageBase64;
+        
+        let mimeType = 'image/jpeg'; // Default
+        if (parts[0].includes(':')) {
+            mimeType = parts[0].split(':')[1].split(';')[0];
+        }
+
+        promptText += "\n\nInspire-toi de l'image fournie.";
+
+        // Ajout de l'image comme partie du contenu pour le modèle multimodal
+        contentParts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
+    }
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: [{ role: 'user', parts: contentParts }],
+    });
+
+    let svgText = response.text || "";
+
+    // Nettoyage robuste pour extraire uniquement le bloc <svg>...</svg>
+    const svgStart = svgText.indexOf('<svg');
+    const svgEnd = svgText.lastIndexOf('</svg>');
+
+    if (svgStart !== -1 && svgEnd !== -1) {
+        svgText = svgText.substring(svgStart, svgEnd + 6);
+    } else {
+        // Fallback nettoyage markdown classique
+        svgText = svgText.replace(/```xml/g, '').replace(/```svg/g, '').replace(/```/g, '').trim();
+    }
     
     // Vérification basique
-    if (!svgText.startsWith('<svg')) {
-       const startIndex = svgText.indexOf('<svg');
-       const endIndex = svgText.lastIndexOf('</svg>');
-       if (startIndex !== -1 && endIndex !== -1) {
-         svgText = svgText.substring(startIndex, endIndex + 6);
-       } else {
-         throw new Error("Le format généré n'est pas un SVG valide.");
-       }
+    if (!svgText.includes('<svg')) {
+       throw new Error("Le modèle n'a pas généré de code SVG valide.");
     }
 
     return svgText;
   } catch (error: any) {
     console.error("Erreur Gemini Logo Generation:", error);
-    // On propage le message d'erreur précis pour l'affichage dans l'UI
     throw new Error(error.message || "Erreur de génération du logo");
   }
 };
