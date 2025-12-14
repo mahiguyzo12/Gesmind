@@ -55,7 +55,7 @@ const DEFAULT_SETTINGS: StoreSettings = {
   cloudProvider: 'NONE',
   themeMode: 'light',
   themeColor: '#4f46e5',
-  githubRepo: 'mahiguyzo12/stockmind-update-server'
+  githubRepo: 'mahiguyzo12/Gesmind'
 };
 
 const App: React.FC = () => {

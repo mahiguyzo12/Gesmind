@@ -606,6 +606,31 @@ export const Settings: React.FC<SettingsProps> = ({
                   </div>
                 </div>
 
+                {/* Update Configuration - ADDED SECTION */}
+                <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
+                    <label className="block text-sm font-bold mb-3 flex items-center justify-between">
+                        <div className="flex items-center">
+                            <Github className="w-4 h-4 mr-2" />
+                            {t('software_update')}
+                        </div>
+                        <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded-full font-mono">
+                            v{process.env.PACKAGE_VERSION || '1.0.0'}
+                        </span>
+                    </label>
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            value={formData.githubRepo || ''}
+                            onChange={(e) => setFormData({...formData, githubRepo: e.target.value})}
+                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800"
+                            placeholder="username/repository"
+                        />
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                        Dépôt source pour la vérification automatique des nouvelles versions.
+                    </p>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                     <Globe className="w-4 h-4 inline mr-1 text-slate-400" />
