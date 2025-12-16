@@ -1,0 +1,57 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fonction helper pour vérifier l'authentification
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 1. Registre des boutiques
+    match /stores_registry/{storeId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update, delete: if isAuth();
+    }
+
+    // 2. Données internes des boutiques
+    match /stores/{storeId} {
+      allow read, write: if isAuth();
+
+      // Règles spécifiques pour les ventes (Transactions/Sales)
+      // Note: Le code existant utilise "transactions", le prompt demande "sales".
+      // J'applique la règle sur "transactions" pour la compatibilité, mais aussi "sales" si migration.
+      match /transactions/{saleId} {
+        allow read, create: if isAuth();
+        // INTERDIRE la modification ou suppression si la vente est verrouillée
+        allow update, delete: if isAuth() && (!resource.data.isLocked);
+      }
+      match /sales/{saleId} {
+        allow read, create: if isAuth();
+        allow update, delete: if isAuth() && (!resource.data.isLocked);
+      }
+
+      // Règles spécifiques pour les Clôtures de Caisse (CashClosings)
+      match /cashClosings/{closureId} {
+        allow read: if isAuth();
+        // CRÉATION : Autorisée seulement si le document n'existe pas encore (ID unique idempotent)
+        allow create: if isAuth() && !exists(/databases/$(database)/documents/stores/$(storeId)/cashClosings/$(closureId));
+        // MODIFICATION / SUPPRESSION : Strictement Interdites
+        allow update, delete: if false;
+      }
+      
+      // Legacy collection name compatibility
+      match /cash_closings/{closureId} {
+        allow read: if isAuth();
+        allow create: if isAuth() && !exists(/databases/$(database)/documents/stores/$(storeId)/cash_closings/$(closureId));
+        allow update, delete: if false;
+      }
+
+      // Accès aux autres sous-collections par défaut
+      match /{subcollection}/{document=**} {
+        allow read, write: if isAuth();
+      }
+    }
+  }
+}
