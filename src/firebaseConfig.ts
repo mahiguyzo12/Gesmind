@@ -11,11 +11,11 @@ let authPromise: Promise<any> | null = null;
 // Configuration fournie par l'utilisateur (Extraite du fichier JSON)
 const PRECONFIGURED_CONFIG: FirebaseConfig = {
   apiKey: "AIzaSyD52rhcJ6NZFCidCs21Ly3zX_v2MRZHFhI",
-  authDomain: "maximal-plate-381513.firebaseapp.com", // Dérivé du Project ID
-  projectId: "maximal-plate-381513",
-  storageBucket: "maximal-plate-381513.firebasestorage.app",
+  authDomain: "original-01-481809.firebaseapp.com",
+  projectId: "original-01-481809",
+  storageBucket: "original-01-481809.firebasestorage.app",
   messagingSenderId: "123822174953",
-  appId: "1:123822174953:web:generic" // ID générique pour l'initialisation Web
+  appId: "1:123822174953:web:generic"
 };
 
 // Fonction pour initialiser ou réinitialiser Firebase dynamiquement
