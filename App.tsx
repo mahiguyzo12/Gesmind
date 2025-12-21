@@ -60,6 +60,7 @@ import {
   processForgottenClosings,
 } from './src/services/firestoreService';
 
+import { auth } from './authService';
 const DEFAULT_SETTINGS: StoreSettings = {
   name: 'Gesmind',
   address: '',
@@ -510,6 +511,14 @@ const App: React.FC = () => {
   ) => {
     setIsCreatingStoreLoading(true);
 
+    const firebaseUser = auth.currentUser;
+    if (!firebaseUser) {
+      alert("Erreur critique : Aucun utilisateur n'est authentifié. Impossible de créer l'entreprise.");
+      console.error("Tentative de création d'entreprise sans utilisateur authentifié.");
+      setIsCreatingStoreLoading(false);
+      return;
+    }
+
     const newStoreId = `store_${Date.now()}`;
 
     const allPermissions: string[] = [];
@@ -524,6 +533,7 @@ const App: React.FC = () => {
       id: newStoreId,
       name: settings.name,
       logoUrl: settings.logoUrl,
+      ownerId: firebaseUser.uid, // <-- AJOUT ESSENTIEL
     };
 
     try {
