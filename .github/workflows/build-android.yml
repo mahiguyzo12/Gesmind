@@ -2,7 +2,7 @@ name: Build Gesmind Android APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -13,58 +13,58 @@ jobs:
       ANDROID_SDK_ROOT: $HOME/android-sdk
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Setup Java 17
-      uses: actions/setup-java@v4
-      with:
-        distribution: temurin
-        java-version: 17
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 18
-        cache: 'npm'
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
 
-    - name: Install Node dependencies
-      run: npm ci
+      - name: Install Node dependencies
+        run: npm ci
 
-    - name: Build Vite frontend
-      run: npm run build
+      - name: Build Vite frontend
+        run: npm run build
 
-    - name: Install Android SDK commandline tools
-      run: |
-        mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-        cd $ANDROID_SDK_ROOT
-        wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
-        unzip -q cmdline-tools.zip -d cmdline-tools_tmp
-        mkdir -p cmdline-tools/latest
-        mv cmdline-tools_tmp/cmdline-tools/* cmdline-tools/latest/
-        rm -rf cmdline-tools.zip cmdline-tools_tmp
+      - name: Install Android SDK commandline tools
+        run: |
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d cmdline-tools_tmp
+          mkdir -p cmdline-tools/latest
+          mv cmdline-tools_tmp/cmdline-tools/* cmdline-tools/latest/
+          rm -rf cmdline-tools.zip cmdline-tools_tmp
 
-    - name: Accept licenses & install build tools/platforms
-      run: |
-        yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
-        $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+      - name: Accept licenses & install build tools/platforms
+        run: |
+          yes | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
+          $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-    - name: Add Android tools to PATH
-      run: |
-        echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
-        echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
+      - name: Add Android tools to PATH
+        run: |
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_PATH
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> $GITHUB_PATH
 
-    - name: Sync Capacitor Android
-      run: npx cap sync android
+      - name: Sync Capacitor Android
+        run: npx cap sync android
 
-    - name: Build Android APK
-      working-directory: android
-      run: |
-        chmod +x gradlew
-        ./gradlew assembleDebug --stacktrace
+      - name: Build Android APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
 
-    - name: Upload APK artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: gesmind-apk
-        path: android/app/build/outputs/apk/debug/app-debug.apk
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gesmind-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk

@@ -1,7 +1,10 @@
-
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'fs';
+import dotenv from 'dotenv';
+
+// Load env vars from .env
+dotenv.config();
 
 // Lecture de la version depuis package.json (Côté Node/Build uniquement)
 const packageJson = JSON.parse(readFileSync('./package.json', 'utf-8'));
@@ -14,7 +17,7 @@ export default defineConfig({
   base: './',
   server: {
     host: true, // Permet d'accéder au serveur dev depuis le réseau local ou le navigateur Android
-    port: 5173
+    port: 5173,
   },
   build: {
     outDir: 'dist',
@@ -24,15 +27,21 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom', 'lucide-react', 'recharts', '@google/generative-ai']
-        }
-      }
-    }
+          vendor: [
+            'react',
+            'react-dom',
+            'lucide-react',
+            'recharts',
+            '@google/generative-ai',
+          ],
+        },
+      },
+    },
   },
   define: {
     // Injection directe de la clé fournie par l'utilisateur
-    'process.env.API_KEY': JSON.stringify("AIzaSyASr_E3TGXSCynKXDqaEAUCnO768BFAOyU"),
+    'process.env.API_KEY': JSON.stringify(process.env.VITE_API_KEY),
     // Injection de la version pour éviter l'import de package.json dans le code client
-    'process.env.PACKAGE_VERSION': JSON.stringify(packageJson.version)
-  }
+    'process.env.PACKAGE_VERSION': JSON.stringify(packageJson.version),
+  },
 });

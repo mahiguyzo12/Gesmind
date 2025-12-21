@@ -1,14 +1,19 @@
-
-import { InventoryItem, Currency, Transaction, User, CashMovement, Customer, Supplier } from './types';
+import {
+  InventoryItem,
+  Currency,
+  Transaction,
+  User,
+  CashMovement,
+  Customer,
+  Supplier,
+} from './types';
 
 // SCHEMA DES PERMISSIONS
 export const PERMISSION_CATEGORIES = [
   {
     id: 'dashboard',
     label: 'Tableau de Bord',
-    actions: [
-      { id: 'view', label: 'Voir le Dashboard' }
-    ]
+    actions: [{ id: 'view', label: 'Voir le Dashboard' }],
   },
   {
     id: 'inventory',
@@ -18,8 +23,8 @@ export const PERMISSION_CATEGORIES = [
       { id: 'add', label: 'Ajouter Produit' },
       { id: 'edit', label: 'Modifier Produit' },
       { id: 'delete', label: 'Supprimer Produit' },
-      { id: 'view_profit', label: 'Voir Marges & Prix Achat' }
-    ]
+      { id: 'view_profit', label: 'Voir Marges & Prix Achat' },
+    ],
   },
   {
     id: 'commercial',
@@ -28,63 +33,61 @@ export const PERMISSION_CATEGORIES = [
       { id: 'view', label: 'Voir Historique' },
       { id: 'sale', label: 'Saisir Vente' },
       { id: 'purchase', label: 'Saisir Achat' },
-      { id: 'delete', label: 'Supprimer Transaction' }
-    ]
+      { id: 'delete', label: 'Supprimer Transaction' },
+    ],
   },
   {
     id: 'expenses',
     label: 'Dépenses',
     actions: [
       { id: 'view', label: 'Consulter' },
-      { id: 'manage', label: 'Gérer Dépenses' }
-    ]
+      { id: 'manage', label: 'Gérer Dépenses' },
+    ],
   },
   {
     id: 'treasury',
     label: 'Trésorerie',
     actions: [
       { id: 'view', label: 'Consulter' },
-      { id: 'manage', label: 'Mouvements & Clôture' }
-    ]
+      { id: 'manage', label: 'Mouvements & Clôture' },
+    ],
   },
   {
     id: 'customers',
     label: 'Clients',
     actions: [
       { id: 'view', label: 'Consulter' },
-      { id: 'manage', label: 'Ajouter/Modifier' }
-    ]
+      { id: 'manage', label: 'Ajouter/Modifier' },
+    ],
   },
   {
     id: 'suppliers',
     label: 'Fournisseurs',
     actions: [
       { id: 'view', label: 'Consulter' },
-      { id: 'manage', label: 'Ajouter/Modifier' }
-    ]
+      { id: 'manage', label: 'Ajouter/Modifier' },
+    ],
   },
   {
     id: 'personnel',
     label: 'Personnel (RH)',
     actions: [
       { id: 'view', label: 'Consulter' },
-      { id: 'manage', label: 'Gérer & Payer' }
-    ]
+      { id: 'manage', label: 'Gérer & Payer' },
+    ],
   },
   {
     id: 'users',
     label: 'Utilisateurs',
     actions: [
       { id: 'view', label: 'Voir' },
-      { id: 'manage', label: 'Créer/Modifier Comptes' }
-    ]
+      { id: 'manage', label: 'Créer/Modifier Comptes' },
+    ],
   },
   {
     id: 'ai',
     label: 'Assistant IA',
-    actions: [
-      { id: 'view', label: 'Utiliser' }
-    ]
+    actions: [{ id: 'view', label: 'Utiliser' }],
   },
   {
     id: 'settings',
@@ -93,9 +96,9 @@ export const PERMISSION_CATEGORIES = [
       { id: 'view', label: 'Accès Menu' },
       { id: 'view_profile', label: 'Mon Profil' },
       { id: 'view_store', label: 'Config Boutique & IA' },
-      { id: 'view_data', label: 'Cloud & Sauvegardes' }
-    ]
-  }
+      { id: 'view_data', label: 'Cloud & Sauvegardes' },
+    ],
+  },
 ];
 
 export const INITIAL_INVENTORY: InventoryItem[] = [
@@ -111,7 +114,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     supplier: 'Apple Distribution',
     location: 'Rayon A-12',
     description: 'Ordinateur portable haute performance Apple M3 Pro',
-    lastUpdated: '2023-10-25'
+    lastUpdated: '2023-10-25',
   },
   {
     id: '2',
@@ -125,7 +128,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     supplier: 'Office Comfort Ltd',
     location: 'Entrepôt B',
     description: 'Chaise de bureau ergonomique premium',
-    lastUpdated: '2023-10-20'
+    lastUpdated: '2023-10-20',
   },
   {
     id: '3',
@@ -139,7 +142,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     supplier: 'TechWholesale',
     location: 'Rayon A-04',
     description: 'Moniteur 4K USB-C pour professionnels',
-    lastUpdated: '2023-10-26'
+    lastUpdated: '2023-10-26',
   },
   {
     id: '4',
@@ -153,7 +156,7 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     supplier: 'Peripherals Plus',
     location: 'Rayon C-02',
     description: 'Clavier compact switchs tactiles',
-    lastUpdated: '2023-10-15'
+    lastUpdated: '2023-10-15',
   },
   {
     id: '5',
@@ -167,11 +170,18 @@ export const INITIAL_INVENTORY: InventoryItem[] = [
     supplier: 'Office Comfort Ltd',
     location: 'Entrepôt B',
     description: 'Bureau motorisé ajustable en hauteur',
-    lastUpdated: '2023-10-22'
-  }
+    lastUpdated: '2023-10-22',
+  },
 ];
 
-export const CATEGORIES = ['Électronique', 'Mobilier', 'Accessoires', 'Bureautique', 'Réseau', 'Autre'];
+export const CATEGORIES = [
+  'Électronique',
+  'Mobilier',
+  'Accessoires',
+  'Bureautique',
+  'Réseau',
+  'Autre',
+];
 
 export const CURRENCIES: Record<string, Currency> = {
   // Europe
@@ -204,7 +214,12 @@ export const CURRENCIES: Record<string, Currency> = {
   INR: { code: 'INR', label: 'Roupie Indienne', symbol: '₹', rate: 90 },
   KRW: { code: 'KRW', label: 'Won Sud-Coréen', symbol: '₩', rate: 1450 },
   AUD: { code: 'AUD', label: 'Dollar Australien', symbol: 'A$', rate: 1.65 },
-  NZD: { code: 'NZD', label: 'Dollar Néo-Zélandais', symbol: 'NZ$', rate: 1.78 },
+  NZD: {
+    code: 'NZD',
+    label: 'Dollar Néo-Zélandais',
+    symbol: 'NZ$',
+    rate: 1.78,
+  },
   SGD: { code: 'SGD', label: 'Dollar de Singapour', symbol: 'S$', rate: 1.45 },
   HKD: { code: 'HKD', label: 'Dollar de Hong Kong', symbol: 'HK$', rate: 8.45 },
   IDR: { code: 'IDR', label: 'Roupie Indonésienne', symbol: 'Rp', rate: 17000 },
@@ -214,8 +229,18 @@ export const CURRENCIES: Record<string, Currency> = {
   VND: { code: 'VND', label: 'Dong Vietnamien', symbol: '₫', rate: 26500 },
 
   // Afrique & Moyen-Orient
-  XOF: { code: 'XOF', label: 'Franc CFA (UEMOA)', symbol: 'F CFA', rate: 655.957 },
-  XAF: { code: 'XAF', label: 'Franc CFA (CEMAC)', symbol: 'F CFA', rate: 655.957 },
+  XOF: {
+    code: 'XOF',
+    label: 'Franc CFA (UEMOA)',
+    symbol: 'F CFA',
+    rate: 655.957,
+  },
+  XAF: {
+    code: 'XAF',
+    label: 'Franc CFA (CEMAC)',
+    symbol: 'F CFA',
+    rate: 655.957,
+  },
   MAD: { code: 'MAD', label: 'Dirham Marocain', symbol: 'DH', rate: 10.8 },
   DZD: { code: 'DZD', label: 'Dinar Algérien', symbol: 'DA', rate: 145 },
   TND: { code: 'TND', label: 'Dinar Tunisien', symbol: 'DT', rate: 3.35 },
@@ -242,8 +267,8 @@ export const THEME_COLORS = [
 // Helper pour générer toutes les permissions pour l'admin
 const getAllPermissions = () => {
   const all: string[] = [];
-  PERMISSION_CATEGORIES.forEach(cat => {
-    cat.actions.forEach(act => {
+  PERMISSION_CATEGORIES.forEach((cat) => {
+    cat.actions.forEach((act) => {
       all.push(`${cat.id}.${act.id}`);
     });
   });
@@ -251,55 +276,59 @@ const getAllPermissions = () => {
 };
 
 export const INITIAL_USERS: User[] = [
-  { 
-    id: 'u1', 
-    name: 'Administrateur', 
-    role: 'ADMIN', 
-    pin: '0000', 
-    avatar: 'https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff', 
+  {
+    id: 'u1',
+    name: 'Administrateur',
+    role: 'ADMIN',
+    pin: '0000',
+    avatar:
+      'https://ui-avatars.com/api/?name=Admin&background=6366f1&color=fff',
     commissionRate: 0,
     permissions: getAllPermissions(),
-    lastLogin: new Date().toISOString()
+    lastLogin: new Date().toISOString(),
   },
-  { 
-    id: 'u2', 
-    name: 'Vendeur John', 
-    role: 'SELLER', 
-    pin: '1234', 
-    avatar: 'https://ui-avatars.com/api/?name=John&background=10b981&color=fff', 
+  {
+    id: 'u2',
+    name: 'Vendeur John',
+    role: 'SELLER',
+    pin: '1234',
+    avatar: 'https://ui-avatars.com/api/?name=John&background=10b981&color=fff',
     commissionRate: 5,
     permissions: [
       'dashboard.view',
       'inventory.view',
-      'commercial.view', 'commercial.sale',
-      'customers.view', 'customers.manage',
-      'settings.view', 'settings.view_profile'
+      'commercial.view',
+      'commercial.sale',
+      'customers.view',
+      'customers.manage',
+      'settings.view',
+      'settings.view_profile',
     ],
-    lastLogin: '2023-10-28T09:30:00'
-  }
+    lastLogin: '2023-10-28T09:30:00',
+  },
 ];
 
 export const INITIAL_CUSTOMERS: Customer[] = [
   {
-    id: 'c1', 
-    name: 'Alice Dupont', 
-    phone: '06 12 34 56 78', 
-    email: 'alice@email.com', 
+    id: 'c1',
+    name: 'Alice Dupont',
+    phone: '06 12 34 56 78',
+    email: 'alice@email.com',
     address: '12 Rue de la Paix, Paris',
     totalSpent: 1250,
     lastPurchaseDate: '2023-10-25',
-    notes: 'Client VIP, préfère les produits Apple'
+    notes: 'Client VIP, préfère les produits Apple',
   },
   {
-    id: 'c2', 
-    name: 'Entreprise XYZ', 
-    phone: '01 98 76 54 32', 
-    email: 'contact@xyz.com', 
+    id: 'c2',
+    name: 'Entreprise XYZ',
+    phone: '01 98 76 54 32',
+    email: 'contact@xyz.com',
     address: 'Zone Industrielle Nord',
     totalSpent: 5000,
     lastPurchaseDate: '2023-10-10',
-    notes: 'Paiement à 30 jours'
-  }
+    notes: 'Paiement à 30 jours',
+  },
 ];
 
 export const INITIAL_SUPPLIERS: Supplier[] = [
@@ -310,7 +339,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
     phone: '+1 555-0100',
     email: 'b2b@apple.com',
     address: 'Cupertino, CA',
-    notes: 'Fournisseur principal IT'
+    notes: 'Fournisseur principal IT',
   },
   {
     id: 's2',
@@ -319,7 +348,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
     phone: '04 56 78 90 12',
     email: 'sales@officecomfort.com',
     address: 'Lyon, France',
-    notes: 'Livraison le vendredi uniquement'
+    notes: 'Livraison le vendredi uniquement',
   },
   {
     id: 's3',
@@ -328,7 +357,7 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
     phone: '01 02 03 04 05',
     email: 'contact@techwholesale.com',
     address: 'Paris, France',
-    notes: 'Grossiste généraliste'
+    notes: 'Grossiste généraliste',
   },
   {
     id: 's4',
@@ -337,8 +366,8 @@ export const INITIAL_SUPPLIERS: Supplier[] = [
     phone: '06 00 00 00 00',
     email: 'marie@peripherals.com',
     address: 'Bordeaux, France',
-    notes: 'Accessoires'
-  }
+    notes: 'Accessoires',
+  },
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
@@ -355,9 +384,19 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     customerId: 'c1',
     customerName: 'Alice Dupont',
     items: [
-      { productId: '1', productName: 'MacBook Pro 16"', quantity: 1, unitPrice: 2499 },
-      { productId: '3', productName: 'Écran Dell UltraSharp 27"', quantity: 1, unitPrice: 450 }
-    ]
+      {
+        productId: '1',
+        productName: 'MacBook Pro 16"',
+        quantity: 1,
+        unitPrice: 2499,
+      },
+      {
+        productId: '3',
+        productName: 'Écran Dell UltraSharp 27"',
+        quantity: 1,
+        unitPrice: 450,
+      },
+    ],
   },
   {
     id: 'T-1002',
@@ -372,13 +411,39 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     supplierId: 's2',
     supplierName: 'Office Comfort Ltd',
     items: [
-      { productId: '2', productName: 'Chaise Ergonomique Herman', quantity: 5, unitPrice: 1200 }
-    ]
-  }
+      {
+        productId: '2',
+        productName: 'Chaise Ergonomique Herman',
+        quantity: 5,
+        unitPrice: 1200,
+      },
+    ],
+  },
 ];
 
 export const INITIAL_CASH_MOVEMENTS: CashMovement[] = [
-  { id: 'm1', date: '2023-10-26T09:00:00', type: 'DEPOSIT', amount: 5000, description: 'Fond de caisse initial', performedBy: 'Administrateur' },
-  { id: 'm2', date: '2023-10-27T14:15:00', type: 'PURCHASE', amount: 6000, description: 'Achat Stock (Ref T-1002)', performedBy: 'Administrateur' },
-  { id: 'm3', date: '2023-10-28T10:30:00', type: 'SALE', amount: 2949, description: 'Vente (Ref T-1001)', performedBy: 'Vendeur John' }
+  {
+    id: 'm1',
+    date: '2023-10-26T09:00:00',
+    type: 'DEPOSIT',
+    amount: 5000,
+    description: 'Fond de caisse initial',
+    performedBy: 'Administrateur',
+  },
+  {
+    id: 'm2',
+    date: '2023-10-27T14:15:00',
+    type: 'PURCHASE',
+    amount: 6000,
+    description: 'Achat Stock (Ref T-1002)',
+    performedBy: 'Administrateur',
+  },
+  {
+    id: 'm3',
+    date: '2023-10-28T10:30:00',
+    type: 'SALE',
+    amount: 2949,
+    description: 'Vente (Ref T-1001)',
+    performedBy: 'Vendeur John',
+  },
 ];
