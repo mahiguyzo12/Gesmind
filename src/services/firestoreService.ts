@@ -180,8 +180,13 @@ export const getStoreMetadata = async (
   try {
     const docRef = doc(db, 'stores_registry', storeId);
     const docSnap = await getDoc(docRef);
-    return docSnap.exists() ? (docSnap.data() as StoreMetadata) : null;
+    if (docSnap.exists()) {
+      return docSnap.data() as StoreMetadata;
+    }
+    console.error(`Store with ID '${storeId}' not found in registry.`);
+    return null;
   } catch (error) {
+    console.error(`Error fetching store metadata for ID '${storeId}':`, error);
     return null;
   }
 };

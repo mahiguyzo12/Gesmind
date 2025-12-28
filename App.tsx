@@ -545,15 +545,12 @@ const App: React.FC = () => {
         adminEmployee
       );
 
-
-      setTimeout(() => {
-        setKnownStores((prev) => [...prev, newMetadata]);
-        setCurrentStoreId(newStoreId);
-        setIsCreatingStoreLoading(false);
-        showToast('Entreprise créée avec succès', 'success');
-      }, 800);
+      setKnownStores((prev) => [...prev, newMetadata]);
+      setCurrentStoreId(newStoreId);
+      setIsCreatingStoreLoading(false);
+      showToast('Entreprise créée avec succès', 'success');
     } catch (e) {
-setIsCreatingStoreLoading(false);
+      setIsCreatingStoreLoading(false);
       alert('Erreur lors de la création de la boutique.');
     }
   };
@@ -700,7 +697,9 @@ setIsCreatingStoreLoading(false);
   }
 
   // --- RENDER CREATION LOADER (Replaced with LoadingScreen) ---
-
+  if (isCreatingStoreLoading) {
+    return <LoadingScreen message="Création de l'entreprise..." />;
+  }
 
   if (!currentUser) {
     return (

@@ -1,28 +1,18 @@
-rules_version = '2';
+rules_version='2'
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Règle générale : Interdire tout accès par défaut pour plus de sécurité.
     match /{document=**} {
-      allow read, write: if false;
-    }
-
-    // Les utilisateurs peuvent lire la liste des entreprises pour se connecter,
-    // mais ne peuvent pas voir les données sensibles sans être propriétaire.
-    // Le document 'stores_registry' doit contenir des métadonnées publiques.
-    match /stores_registry/{storeId} {
-      allow read: if request.auth != null;
-      // La création/mise à jour se fait via une fonction cloud sécurisée (recommandé)
-      // ou via la règle ci-dessous si le document contient l'UID du créateur.
-      allow create, update: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-    } 
-
-    // Un utilisateur ne peut accéder aux données d'une entreprise (`stores/{storeId}`)
-    // que si son UID est présent dans un champ `members` (ou `ownerId`) de ce document.
-    // Ici, nous utilisons `ownerId` pour un modèle simple.
-    match /stores/{storeId}/{document=**} {
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+      // This rule allows anyone with your database reference to view, edit,
+      // and delete all data in your database. It is useful for getting
+      // started, but it is configured to expire after 30 days because it
+      // leaves your app open to attackers. At that time, all client
+      // requests to your database will be denied.
+      //
+      // Make sure to write security rules for your app before that time, or
+      // else all client requests to your database will be denied until you
+      // update your rules.
+      allow read, write: if request.time < timestamp.date(2026, 1, 27);
     }
   }
 }

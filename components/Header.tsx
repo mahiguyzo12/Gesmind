@@ -4,6 +4,7 @@ import { LogOut, Home } from 'lucide-react';
 import { getTranslation } from '../translations';
 
 interface HeaderProps {
+  currentView: ViewState;
   onNavigate: (view: ViewState) => void;
   currentUser: User;
   onLogout: () => void;

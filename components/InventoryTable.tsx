@@ -21,6 +21,7 @@ import {
   FileText,
   FileSpreadsheet,
   File,
+  Shield,
 } from 'lucide-react';
 import { CATEGORIES } from '../constants';
 import { generateItemDetails } from '../services/geminiService';

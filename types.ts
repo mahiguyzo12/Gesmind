@@ -38,6 +38,7 @@ export interface StoreMetadata {
   id: string;
   name: string;
   logoUrl?: string;
+  ownerId: string;
 }
 
 export interface StoreSettings {

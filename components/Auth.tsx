@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { generateStoreLogo } from '../services/geminiService';
-import { LoadingScreen } from './LoadingScreen'; // Import ajouté
+
 
 interface AuthProps {
   users: User[];
@@ -306,7 +306,9 @@ export const Auth: React.FC<AuthProps> = ({
       await new Promise((r) => setTimeout(r, 800));
 
       if (result) setFoundStore(result);
-      else setSearchError('ID introuvable.');
+      else setSearchError(
+          "ID introuvable. Vérifiez l'ID ou si la boutique a été créée en mode local sur un autre appareil."
+        );
     } catch {
       setSearchError('Erreur de connexion.');
     } finally {
