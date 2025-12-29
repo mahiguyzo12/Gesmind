@@ -24,6 +24,7 @@ const AuthScreen: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [authMethod, setAuthMethod] = useState<'email' | 'google' | null>(null);
 
   // Effet pour réinitialiser les messages quand on bascule de mode
   useEffect(() => {
@@ -44,7 +45,7 @@ const AuthScreen: React.FC = () => {
       return;
     }
 
-    setIsLoading(true);
+    setIsLoading(true); setAuthMethod('email');
     try {
       if (isLogin) {
         await signInWithEmail(email, password);
@@ -58,19 +59,21 @@ const AuthScreen: React.FC = () => {
       handleAuthError(err);
     } finally {
       setIsLoading(false);
+      setAuthMethod(null);
     }
   };
 
   const handleGoogleAuth = async () => {
     setError(null);
     setMessage(null);
-    setIsLoading(true);
+    setIsLoading(true); setAuthMethod('google');
     try {
       await signInWithGoogle();
     } catch (err: any) {
       handleAuthError(err);
     } finally {
       setIsLoading(false);
+      setAuthMethod(null);
     }
   };
 
@@ -154,7 +157,7 @@ const AuthScreen: React.FC = () => {
             </div>
           )}
           <button type="submit" disabled={isLoading} className="w-full flex justify-center items-center bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-2">
-            {isLoading && !message ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
+            {isLoading && authMethod === 'email' ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : null}
             {isLogin ? 'Se connecter' : "Créer mon compte"}
           </button>
         </form>
@@ -166,7 +169,11 @@ const AuthScreen: React.FC = () => {
         </div>
 
         <button onClick={handleGoogleAuth} disabled={isLoading} className="w-full flex items-center justify-center py-2.5 px-4 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors disabled:opacity-50">
-          <GoogleIcon className="mr-3" />
+          {isLoading && authMethod === 'google' ? (
+            <Loader2 className="mr-3 h-5 w-5 animate-spin" />
+          ) : (
+            <GoogleIcon className="mr-3" />
+          )}
           Continuer avec Google
         </button>
 

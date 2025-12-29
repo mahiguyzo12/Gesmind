@@ -919,7 +919,13 @@ const App: React.FC = () => {
           />
         );
       case ViewState.AI_INSIGHTS:
-        return <AIAdvisor items={inventory} currency={selectedCurrency} />;
+        return (
+          <AIAdvisor
+            items={inventory}
+            currency={selectedCurrency}
+            onNavigate={setCurrentView}
+          />
+        );
       case ViewState.SETTINGS:
         return (
           <Settings
