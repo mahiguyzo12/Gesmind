@@ -33,6 +33,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     msg_verified: "Vérifié !",
     msg_google_connected: "Google connecté !",
     
+    // Forgot Password
+    forgot_password: "Mot de passe oublié ?",
+    forgot_title: "Réinitialisation",
+    forgot_desc: "Entrez votre email pour recevoir un lien.",
+    btn_reset_link: "Envoyer le lien",
+    back_to_login: "Retour à la connexion",
+    reset_sent: "Email envoyé ! Vérifiez vos spams.",
+
     // Create Store Wizard
     setup_title: "Configuration Complète",
     section_personal: "Informations Personnelles (Admin)",
@@ -182,6 +190,14 @@ export const TRANSLATIONS: Record<string, Record<string, string>> = {
     msg_verified: "Verified!",
     msg_google_connected: "Google connected!",
     
+    // Forgot Password
+    forgot_password: "Forgot password?",
+    forgot_title: "Reset Password",
+    forgot_desc: "Enter your email to receive a link.",
+    btn_reset_link: "Send Link",
+    back_to_login: "Back to Login",
+    reset_sent: "Email sent! Check your spam.",
+
     // Create Store Wizard
     setup_title: "Full Configuration",
     section_personal: "Personal Info (Admin)",

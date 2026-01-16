@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { User, StoreMetadata, StoreSettings, Employee, BackupData } from '../types';
-import { LogIn, User as UserIcon, Lock, PlusCircle, Building, X, Store, Cloud, KeyRound, Check, RefreshCw, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, Mail, Phone, Eye, EyeOff, Copy, FileText, FileSpreadsheet, File, Terminal, Play, RotateCcw, Trash2, AlertTriangle, Shield, Upload, MapPin, Globe, Briefcase, Wand2, Stars, CheckCircle, ArrowRight } from 'lucide-react';
+import { LogIn, User as UserIcon, Lock, PlusCircle, Building, X, Store, Cloud, KeyRound, Check, RefreshCw, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, Mail, Phone, Eye, EyeOff, Copy, FileText, FileSpreadsheet, File, Terminal, Play, RotateCcw, Trash2, AlertTriangle, Shield, Upload, MapPin, Globe, Briefcase, Wand2, Stars, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { generateStoreLogo } from '../services/geminiService';
 import { GesmindLogo } from './GesmindLogo';
@@ -16,7 +16,8 @@ import {
   RecaptchaVerifier,
   signInWithPhoneNumber,
   ConfirmationResult,
-  onAuthStateChanged
+  onAuthStateChanged,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 
 interface AuthProps {
@@ -431,6 +432,27 @@ export const Auth: React.FC<AuthProps> = ({
       }
   };
 
+  const handlePasswordReset = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!auth) return setError("Firebase config missing.");
+      if (!email) return setError("Email requis");
+      
+      setIsLoading(true); setError(''); setSuccessMsg('');
+      try {
+          await sendPasswordResetEmail(auth, email);
+          setSuccessMsg(t('reset_sent'));
+          // Return to login after delay
+          setTimeout(() => {
+              setAuthMode('LOGIN');
+              setSuccessMsg('');
+          }, 4000);
+      } catch (err: any) {
+          handleAuthError(err);
+      } finally {
+          setIsLoading(false);
+      }
+  };
+
   const handlePhoneSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (!auth || !phoneNumber) return;
@@ -561,6 +583,7 @@ export const Auth: React.FC<AuthProps> = ({
                 <div className="w-full">{error}</div>
             </div>
         )}
+        {successMsg && <div className="mb-4 bg-emerald-500/20 border border-emerald-500 text-emerald-200 p-4 rounded-xl flex items-center text-xs font-bold animate-fade-in"><Check className="w-5 h-5 mr-2" />{successMsg}</div>}
 
         <div className={`bg-white rounded-3xl shadow-2xl overflow-hidden transition-all duration-500 ${setupMode === 'CREATE_FORM' ? 'max-w-2xl mx-auto' : ''}`}>
             
@@ -587,6 +610,17 @@ export const Auth: React.FC<AuthProps> = ({
                             <LogIn className="w-5 h-5 mr-2" /> {t('login_button')}
                         </button>
                     </form>
+                    
+                    <div className="mt-3 text-right">
+                        <button 
+                            type="button" 
+                            onClick={() => { setCurrentView('CLOUD_AUTH'); setAuthMode('FORGOT'); setError(''); }} 
+                            className="text-xs text-indigo-500 hover:text-indigo-700 font-medium"
+                        >
+                            {t('forgot_password')}
+                        </button>
+                    </div>
+
                     <div className="mt-6">
                         <div className="relative flex py-2 items-center">
                             <div className="flex-grow border-t border-slate-200"></div>
@@ -616,16 +650,17 @@ export const Auth: React.FC<AuthProps> = ({
                 </div>
             )}
 
-            {/* --- DETAILED CREATE FORM --- */}
+            {/* ... (Create Form & Join Form code unchanged) ... */}
             {currentView === 'SETUP' && setupMode === 'CREATE_FORM' && (
                 <div className="p-0 md:p-6 bg-slate-50 md:bg-white md:min-w-[600px] overflow-y-auto max-h-[85vh]">
+                    {/* ... (Existing Create Form code remains unchanged for brevity, reusing provided content logic) ... */}
                     <div className="sticky top-0 bg-white p-4 border-b border-slate-100 flex items-center justify-between z-10">
                         <button onClick={() => setSetupMode('CREATE')} className="text-slate-400 hover:text-slate-600 flex items-center text-sm font-medium"><ArrowRight className="w-4 h-4 mr-1 rotate-180" /> {t('back')}</button>
                         <h3 className="text-lg font-bold text-slate-800">{t('setup_title')}</h3>
                     </div>
                     
                     <form onSubmit={handleCreateStoreSubmit} className="p-6 space-y-8">
-                        {/* ALERT IF AUTH DETECTED */}
+                        {/* ... (Same fields as provided in input) ... */}
                         {firebaseUser && (
                             <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 flex items-start animate-fade-in">
                                 <Cloud className="w-5 h-5 text-indigo-600 mr-3 flex-shrink-0 mt-0.5" />
@@ -637,51 +672,32 @@ export const Auth: React.FC<AuthProps> = ({
                                 </div>
                             </div>
                         )}
-
-                        {/* SECTION 1: PERSONNEL */}
                         <div className="space-y-4">
-                            <h4 className="text-sm font-bold text-indigo-600 uppercase flex items-center border-b-2 border-indigo-100 pb-2">
-                                <UserIcon className="w-4 h-4 mr-2"/> {t('section_personal')}
-                            </h4>
+                            <h4 className="text-sm font-bold text-indigo-600 uppercase flex items-center border-b-2 border-indigo-100 pb-2"><UserIcon className="w-4 h-4 mr-2"/> {t('section_personal')}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_name')}</label><input type="text" required value={pName} onChange={e => setPName(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_firstname')}</label><input type="text" required value={pFirstName} onChange={e => setPFirstName(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_dob')}</label><input type="date" value={pDob} onChange={e => setPDob(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900"/></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_pob')}</label><input type="text" value={pPob} onChange={e => setPPob(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_address')}</label><input type="text" value={pResidence} onChange={e => setPResidence(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('field_phone')}</label><input type="tel" required value={pPhone} onChange={e => setPPhone(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('field_email')}</label><input type="email" required={isDbConnected} value={pEmail} onChange={e => setPEmail(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_zip')}</label><input type="text" value={pZip} onChange={e => setPZip(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400"/></div>
                             </div>
                         </div>
-
-                        {/* SECTION 2: ENTREPRISE */}
                         <div className="space-y-4">
-                            <h4 className="text-sm font-bold text-emerald-600 uppercase flex items-center border-b-2 border-emerald-100 pb-2">
-                                <Briefcase className="w-4 h-4 mr-2"/> {t('section_company')}
-                            </h4>
+                            <h4 className="text-sm font-bold text-emerald-600 uppercase flex items-center border-b-2 border-emerald-100 pb-2"><Briefcase className="w-4 h-4 mr-2"/> {t('section_company')}</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_company_full')}</label><input type="text" value={cFullName} onChange={e => setCFullName(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_company_short')}</label><input type="text" required value={cShortName} onChange={e => setCShortName(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_rccm')}</label><input type="text" value={cRccm} onChange={e => setCRccm(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400"/></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_nif')}</label><input type="text" value={cNif} onChange={e => setCNif(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400"/></div>
-                                
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_zip')}</label><input type="text" value={cZip} onChange={e => setCZip(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400"/></div>
                                 <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_city')}</label><input type="text" value={cLoc} onChange={e => setCLoc(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400"/></div>
                             </div>
                         </div>
-
-                        {/* SECTION 3: LOGO / IDENTITE */}
                         <div className="space-y-4">
-                            <h4 className="text-sm font-bold text-blue-600 uppercase flex items-center border-b-2 border-blue-100 pb-2">
-                                <ImageIcon className="w-4 h-4 mr-2"/> {t('section_logo')}
-                            </h4>
+                            <h4 className="text-sm font-bold text-blue-600 uppercase flex items-center border-b-2 border-blue-100 pb-2"><ImageIcon className="w-4 h-4 mr-2"/> {t('section_logo')}</h4>
                             <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <div className="flex items-center space-x-4 mb-4">
                                     <div className="w-20 h-20 bg-white rounded-lg border border-slate-200 flex items-center justify-center overflow-hidden">
@@ -689,16 +705,9 @@ export const Auth: React.FC<AuthProps> = ({
                                     </div>
                                     <div className="flex-1">
                                         <label className="block text-xs font-bold text-slate-500 mb-1">{t('label_logo_prompt')}</label>
-                                        <textarea 
-                                            value={logoPrompt}
-                                            onChange={e => setLogoPrompt(e.target.value)}
-                                            className="w-full p-2 border border-slate-300 rounded-lg text-xs h-16 resize-none mb-2 font-mono text-slate-900 placeholder-slate-400"
-                                        ></textarea>
+                                        <textarea value={logoPrompt} onChange={e => setLogoPrompt(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-xs h-16 resize-none mb-2 font-mono text-slate-900 placeholder-slate-400"></textarea>
                                         <div className="flex gap-2">
-                                            <button type="button" onClick={handleStartLogoGeneration} disabled={isGeneratingLogo} className="flex-1 bg-indigo-600 text-white text-xs py-2 rounded font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center">
-                                                <Sparkles className="w-3 h-3 mr-1" />
-                                                {isGeneratingLogo ? '...' : t('btn_generate_logo')}
-                                            </button>
+                                            <button type="button" onClick={handleStartLogoGeneration} disabled={isGeneratingLogo} className="flex-1 bg-indigo-600 text-white text-xs py-2 rounded font-bold hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center"><Sparkles className="w-3 h-3 mr-1" />{isGeneratingLogo ? '...' : t('btn_generate_logo')}</button>
                                             <button type="button" onClick={() => logoInputRef.current?.click()} className="flex-1 bg-white border border-slate-300 text-slate-600 text-xs py-2 rounded font-bold hover:bg-slate-50">{t('btn_import')}</button>
                                             <input type="file" ref={logoInputRef} onChange={handleLogoUpload} className="hidden" accept="image/*" />
                                         </div>
@@ -706,43 +715,24 @@ export const Auth: React.FC<AuthProps> = ({
                                 </div>
                             </div>
                         </div>
-
-                        {/* SECTION 4: CONNEXION */}
                         <div className="space-y-4">
-                            <h4 className="text-sm font-bold text-purple-600 uppercase flex items-center border-b-2 border-purple-100 pb-2">
-                                <Lock className="w-4 h-4 mr-2"/> {t('section_security')}
-                            </h4>
+                            <h4 className="text-sm font-bold text-purple-600 uppercase flex items-center border-b-2 border-purple-100 pb-2"><Lock className="w-4 h-4 mr-2"/> {t('section_security')}</h4>
                             <div className="grid grid-cols-1 gap-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 mb-1">{t('label_username_login')}</label>
-                                    <input type="text" required value={lUser} onChange={e => setLUser(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg font-bold text-slate-900 placeholder-slate-400" />
-                                </div>
+                                <div><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_username_login')}</label><input type="text" required value={lUser} onChange={e => setLUser(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg font-bold text-slate-900 placeholder-slate-400" /></div>
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="relative">
-                                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('label_pin')}</label>
-                                        <input type={showCreatePass ? "text" : "password"} required value={lPass} onChange={e => setLPass(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" placeholder="PIN 4+" />
-                                    </div>
-                                    <div className="relative">
-                                        <label className="block text-xs font-bold text-slate-500 mb-1">{t('confirm_password')}</label>
-                                        <input type={showCreatePass ? "text" : "password"} required value={lConfirm} onChange={e => setLConfirm(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" />
-                                        <button type="button" onClick={() => setShowCreatePass(!showCreatePass)} className="absolute right-2 top-8 text-slate-400"><Eye className="w-4 h-4"/></button>
-                                    </div>
+                                    <div className="relative"><label className="block text-xs font-bold text-slate-500 mb-1">{t('label_pin')}</label><input type={showCreatePass ? "text" : "password"} required value={lPass} onChange={e => setLPass(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" placeholder="PIN 4+" /></div>
+                                    <div className="relative"><label className="block text-xs font-bold text-slate-500 mb-1">{t('confirm_password')}</label><input type={showCreatePass ? "text" : "password"} required value={lConfirm} onChange={e => setLConfirm(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400" /><button type="button" onClick={() => setShowCreatePass(!showCreatePass)} className="absolute right-2 top-8 text-slate-400"><Eye className="w-4 h-4"/></button></div>
                                 </div>
                             </div>
                         </div>
-
-                        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg text-lg mt-6">
-                            {t('btn_create_start')}
-                        </button>
+                        <button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-4 rounded-xl font-bold shadow-lg text-lg mt-6">{t('btn_create_start')}</button>
                     </form>
                 </div>
             )}
 
-            {/* --- JOIN FORM --- */}
             {currentView === 'SETUP' && setupMode === 'JOIN' && (
                 <div className="p-8 text-left animate-fade-in relative">
                     <button onClick={() => setSetupMode('CREATE')} className="mb-4 text-slate-400 hover:text-slate-600 flex items-center text-sm"><ArrowRight className="w-4 h-4 mr-1 rotate-180" /> {t('back')}</button>
-                    
                     {!previewStore ? (
                         <>
                             <h3 className="text-xl font-bold text-slate-800 mb-4">{t('title_join')}</h3>
@@ -771,21 +761,9 @@ export const Auth: React.FC<AuthProps> = ({
                                 <h2 className="text-2xl font-extrabold text-slate-800 mb-1">{previewStore.name}</h2>
                                 <p className="text-xs font-mono text-slate-400 bg-slate-200/50 inline-block px-2 py-1 rounded select-all">ID: {previewStore.id}</p>
                             </div>
-                            
                             <div className="flex gap-3">
-                                <button 
-                                    onClick={() => setPreviewStore(null)} 
-                                    className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors"
-                                >
-                                    {t('cancel')}
-                                </button>
-                                <button 
-                                    onClick={confirmJoinStore} 
-                                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg flex items-center justify-center transition-all transform hover:scale-105"
-                                >
-                                    <CheckCircle className="w-5 h-5 mr-2" />
-                                    {t('btn_confirm_join')}
-                                </button>
+                                <button onClick={() => setPreviewStore(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">{t('cancel')}</button>
+                                <button onClick={confirmJoinStore} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-bold hover:bg-emerald-700 shadow-lg flex items-center justify-center transition-all transform hover:scale-105"><CheckCircle className="w-5 h-5 mr-2" />{t('btn_confirm_join')}</button>
                             </div>
                         </div>
                     )}
@@ -797,7 +775,7 @@ export const Auth: React.FC<AuthProps> = ({
                 <div className="p-8 animate-fade-in">
                     <div className="flex items-center mb-6">
                         <button onClick={() => setCurrentView('SETUP')} className="mr-3 text-slate-400 hover:text-slate-600"><ArrowRight className="w-5 h-5 rotate-180" /></button>
-                        <h3 className="text-xl font-bold text-slate-800">{t('cloud_login')}</h3>
+                        <h3 className="text-xl font-bold text-slate-800">{authMode === 'FORGOT' ? t('forgot_title') : t('cloud_login')}</h3>
                     </div>
                     {firebaseUser ? (
                         <div className="text-center space-y-4">
@@ -811,58 +789,85 @@ export const Auth: React.FC<AuthProps> = ({
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <button onClick={handleGoogleSignIn} className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3 rounded-xl font-bold flex items-center justify-center transition-all shadow-sm">
-                                {t('btn_google')}
-                            </button>
-                            
-                            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">{t('or')}</span></div></div>
-                            
-                            {/* Toggle Method */}
-                            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
-                                <button onClick={() => setAuthMethod('EMAIL')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'EMAIL' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Mail className="w-4 h-4 mr-2" /> {t('btn_email')}</button>
-                                <button onClick={() => setAuthMethod('PHONE')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'PHONE' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Phone className="w-4 h-4 mr-2" /> {t('btn_phone')}</button>
-                            </div>
-
-                            {authMethod === 'EMAIL' ? (
-                                <form onSubmit={handleCloudLogin} className="space-y-4">
-                                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder={t('field_email')} />
-                                    <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder={t('password')} />
-                                    {authMode === 'REGISTER' && (
-                                        <input 
-                                            type="password" 
-                                            required 
-                                            value={confirmPassword} 
-                                            onChange={e => setConfirmPassword(e.target.value)} 
-                                            className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 animate-fade-in" 
-                                            placeholder={t('confirm_password')}
-                                        />
-                                    )}
-                                    <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">{authMode === 'LOGIN' ? t('login_button') : "S'inscrire"}</button>
-                                    <div className="text-center text-xs">
-                                        <button type="button" onClick={() => {
-                                            setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN');
-                                            setError('');
-                                            setConfirmPassword('');
-                                        }} className="text-indigo-600 font-bold">
-                                            {authMode === 'LOGIN' ? "Créer un compte" : "J'ai déjà un compte"}
+                            {/* FORGOT PASSWORD FORM */}
+                            {authMode === 'FORGOT' ? (
+                                <form onSubmit={handlePasswordReset} className="space-y-4 animate-fade-in">
+                                    <p className="text-sm text-slate-500 mb-2">{t('forgot_desc')}</p>
+                                    <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder={t('field_email')} />
+                                    <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all">
+                                        {isLoading ? <RefreshCw className="w-5 h-5 animate-spin"/> : t('btn_reset_link')}
+                                    </button>
+                                    <div className="text-center mt-4">
+                                        <button type="button" onClick={() => { setAuthMode('LOGIN'); setError(''); }} className="text-sm text-slate-500 hover:text-slate-800 font-medium flex items-center justify-center mx-auto">
+                                            <ArrowLeft className="w-4 h-4 mr-2" /> {t('back_to_login')}
                                         </button>
                                     </div>
                                 </form>
                             ) : (
-                                <div className="space-y-4">
-                                    {!confirmationResult ? (
-                                        <form onSubmit={handlePhoneSubmit} className="space-y-4">
-                                            <input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder="+33 6 12..." />
-                                            <div id="auth-recaptcha-container"></div>
-                                            <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">{t('btn_send_code')}</button>
-                                        </form>
-                                    ) : (
-                                        <form onSubmit={handleOtpSubmit} className="space-y-4">
-                                            <input type="text" required value={otpCode} onChange={e => setOtpCode(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-center font-bold text-xl tracking-widest text-slate-900 placeholder-slate-400" placeholder="CODE" />
-                                            <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">{t('btn_verify')}</button>
-                                        </form>
-                                    )}
+                                <>
+                                <button onClick={handleGoogleSignIn} className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3 rounded-xl font-bold flex items-center justify-center transition-all shadow-sm">
+                                    {t('btn_google')}
+                                </button>
+                                
+                                <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">{t('or')}</span></div></div>
+                                
+                                {/* Toggle Method */}
+                                <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                                    <button onClick={() => setAuthMethod('EMAIL')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'EMAIL' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Mail className="w-4 h-4 mr-2" /> {t('btn_email')}</button>
+                                    <button onClick={() => setAuthMethod('PHONE')} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'PHONE' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Phone className="w-4 h-4 mr-2" /> {t('btn_phone')}</button>
                                 </div>
+
+                                {authMethod === 'EMAIL' ? (
+                                    <form onSubmit={handleCloudLogin} className="space-y-4">
+                                        <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder={t('field_email')} />
+                                        <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder={t('password')} />
+                                        {authMode === 'REGISTER' && (
+                                            <input 
+                                                type="password" 
+                                                required 
+                                                value={confirmPassword} 
+                                                onChange={e => setConfirmPassword(e.target.value)} 
+                                                className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400 animate-fade-in" 
+                                                placeholder={t('confirm_password')}
+                                            />
+                                        )}
+                                        
+                                        {authMode === 'LOGIN' && (
+                                            <div className="text-right">
+                                                <button type="button" onClick={() => { setAuthMode('FORGOT'); setError(''); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                                    {t('forgot_password')}
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">{authMode === 'LOGIN' ? t('login_button') : "S'inscrire"}</button>
+                                        <div className="text-center text-xs">
+                                            <button type="button" onClick={() => {
+                                                setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN');
+                                                setError('');
+                                                setConfirmPassword('');
+                                            }} className="text-indigo-600 font-bold">
+                                                {authMode === 'LOGIN' ? "Créer un compte" : "J'ai déjà un compte"}
+                                            </button>
+                                        </div>
+                                    </form>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {!confirmationResult ? (
+                                            <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                                                <input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-slate-900 placeholder-slate-400" placeholder="+33 6 12..." />
+                                                <div id="auth-recaptcha-container"></div>
+                                                <button type="submit" className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold">{t('btn_send_code')}</button>
+                                            </form>
+                                        ) : (
+                                            <form onSubmit={handleOtpSubmit} className="space-y-4">
+                                                <input type="text" required value={otpCode} onChange={e => setOtpCode(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl bg-slate-50 text-center font-bold text-xl tracking-widest text-slate-900 placeholder-slate-400" placeholder="CODE" />
+                                                <button type="submit" className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold">{t('btn_verify')}</button>
+                                            </form>
+                                        )}
+                                    </div>
+                                )}
+                                </>
                             )}
                         </div>
                     )}
@@ -878,7 +883,6 @@ export const Auth: React.FC<AuthProps> = ({
 
       {/* LOGO GEN MODAL */}
       {isLogoConsoleOpen && (
-        /* ... existing modal code kept for UI but texts should be reviewed if critical ... */
         <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up border border-white/20">
               <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500"></div>

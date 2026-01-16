@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Cloud, Check, Shield, AlertTriangle, ArrowRight, Copy, Phone, Mail, Lock, RefreshCw, Settings, Database } from 'lucide-react';
+import { Cloud, Check, Shield, AlertTriangle, ArrowRight, Copy, Phone, Mail, Lock, RefreshCw, Settings, Database, ArrowLeft } from 'lucide-react';
 import { auth, googleProvider, setupFirebase } from '../src/firebaseConfig';
 import { 
   signInWithEmailAndPassword, 
@@ -12,6 +12,7 @@ import {
   ConfirmationResult,
   linkWithPhoneNumber,
   verifyBeforeUpdateEmail,
+  sendPasswordResetEmail,
   User
 } from 'firebase/auth';
 import { getTranslation } from '../translations';
@@ -32,7 +33,7 @@ export const CloudSetup: React.FC<CloudSetupProps> = ({ onComplete, lang }) => {
 
   // Auth Step State
   const [authMethod, setAuthMethod] = useState<'EMAIL' | 'PHONE'>('EMAIL');
-  const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
+  const [authMode, setAuthMode] = useState<'LOGIN' | 'REGISTER' | 'FORGOT'>('LOGIN');
   
   // Inputs
   const [email, setEmail] = useState('');
@@ -52,6 +53,7 @@ export const CloudSetup: React.FC<CloudSetupProps> = ({ onComplete, lang }) => {
   // System State
   const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [error, setError] = useState<React.ReactNode>(''); 
+  const [successMsg, setSuccessMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const t = (key: string) => getTranslation(lang, key);
@@ -141,6 +143,26 @@ export const CloudSetup: React.FC<CloudSetupProps> = ({ onComplete, lang }) => {
       }
       handlePrimaryAuthSuccess(userCredential.user);
     } catch (err: any) { handleAuthError(err); } finally { setIsLoading(false); }
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!auth) return setError("Firebase config missing.");
+      if (!email) return setError("Email required");
+      
+      setIsLoading(true); setError(''); setSuccessMsg('');
+      try {
+          await sendPasswordResetEmail(auth, email);
+          setSuccessMsg(t('reset_sent'));
+          setTimeout(() => {
+              setAuthMode('LOGIN');
+              setSuccessMsg('');
+          }, 4000);
+      } catch (err: any) {
+          handleAuthError(err);
+      } finally {
+          setIsLoading(false);
+      }
   };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
@@ -284,44 +306,80 @@ export const CloudSetup: React.FC<CloudSetupProps> = ({ onComplete, lang }) => {
       <div className="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden p-8 animate-fade-in">
         <div className="text-center mb-6">
             <div className="w-20 h-20 bg-indigo-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-indigo-600"><Cloud className="w-10 h-10" /></div>
-            <h2 className="text-2xl font-bold text-slate-800">{t('cloud_setup_title')}</h2>
-            <p className="text-slate-500 text-sm mt-2">{t('cloud_setup_subtitle')}</p>
+            <h2 className="text-2xl font-bold text-slate-800">
+                {authMode === 'FORGOT' ? t('forgot_title') : t('cloud_setup_title')}
+            </h2>
+            <p className="text-slate-500 text-sm mt-2">
+                {authMode === 'FORGOT' ? t('forgot_desc') : t('cloud_setup_subtitle')}
+            </p>
         </div>
         {error && <div className="mb-4 bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-xs font-bold flex items-start break-words select-text" style={{userSelect: 'text'}}><AlertTriangle className="w-5 h-5 mr-3 flex-shrink-0 mt-0.5" /><div className="w-full">{error}</div></div>}
+        {successMsg && <div className="mb-4 bg-emerald-50 border border-emerald-100 text-emerald-600 p-4 rounded-xl text-xs font-bold flex items-center"><Check className="w-5 h-5 mr-2" />{successMsg}</div>}
+        
         <div className="space-y-4">
-            <button onClick={handleGoogleSignIn} disabled={isLoading} className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3.5 rounded-xl font-bold flex items-center justify-center transition-all shadow-sm group">
-                {isLoading ? <div className="w-5 h-5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin mr-2"></div> : <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" /><path fill="#EA4335" d="M12 4.63c1.61 0 3.06.56 4.21 1.64l3.16-3.16C17.45 1.18 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>}
-                {t('btn_google')}
-            </button>
-            <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">{t('or')}</span></div></div>
-            <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
-                <button onClick={() => { setAuthMethod('EMAIL'); setError(''); }} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'EMAIL' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Mail className="w-4 h-4 mr-2" /> {t('btn_email')}</button>
-                <button onClick={() => { setAuthMethod('PHONE'); setError(''); }} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'PHONE' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Phone className="w-4 h-4 mr-2" /> {t('btn_phone')}</button>
-            </div>
-            {authMethod === 'EMAIL' ? (
-                <form onSubmit={handleEmailAuth} className="space-y-3">
+            {/* FORGOT PASSWORD FORM */}
+            {authMode === 'FORGOT' ? (
+                <form onSubmit={handlePasswordReset} className="space-y-4 animate-fade-in">
                     <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder={t('field_email')} />
-                    <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder={t('password')} />
-                    {authMode === 'REGISTER' && <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all animate-fade-in" placeholder={t('confirm_password')} />}
-                    <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all mt-2">{authMode === 'LOGIN' ? t('login_button') : "S'inscrire"}{!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}</button>
-                    <div className="text-center mt-2"><button type="button" onClick={() => { setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN'); setError(''); setConfirmPassword(''); }} className="text-sm text-indigo-600 font-bold hover:underline">{authMode === 'LOGIN' ? "S'inscrire" : "J'ai un compte"}</button></div>
+                    <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all">
+                        {isLoading ? <RefreshCw className="w-5 h-5 animate-spin"/> : t('btn_reset_link')}
+                    </button>
+                    <div className="text-center mt-4">
+                        <button type="button" onClick={() => { setAuthMode('LOGIN'); setError(''); }} className="text-sm text-slate-500 hover:text-slate-800 font-medium flex items-center justify-center mx-auto">
+                            <ArrowLeft className="w-4 h-4 mr-2" /> {t('back_to_login')}
+                        </button>
+                    </div>
                 </form>
             ) : (
-                <div className="space-y-4">
-                    {!confirmationResult ? (
-                        <form onSubmit={handlePhoneSubmit} className="space-y-4">
-                            <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase">{t('field_phone')}</label><input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder="+33 6..." /></div>
-                            <div id="recaptcha-container"></div>
-                            <button type="submit" disabled={isLoading || !phoneNumber} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all">{isLoading ? '...' : t('btn_send_code')}</button>
+                /* NORMAL AUTH FORMS */
+                <>
+                    <button onClick={handleGoogleSignIn} disabled={isLoading} className="w-full bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 py-3.5 rounded-xl font-bold flex items-center justify-center transition-all shadow-sm group">
+                        {isLoading ? <div className="w-5 h-5 border-2 border-slate-600 border-t-transparent rounded-full animate-spin mr-2"></div> : <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.84z" /><path fill="#EA4335" d="M12 4.63c1.61 0 3.06.56 4.21 1.64l3.16-3.16C17.45 1.18 14.97 0 12 0 7.7 0 3.99 2.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>}
+                        {t('btn_google')}
+                    </button>
+                    
+                    <div className="relative my-4"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">{t('or')}</span></div></div>
+                    
+                    <div className="flex bg-slate-100 p-1 rounded-xl mb-4">
+                        <button onClick={() => { setAuthMethod('EMAIL'); setError(''); }} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'EMAIL' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Mail className="w-4 h-4 mr-2" /> {t('btn_email')}</button>
+                        <button onClick={() => { setAuthMethod('PHONE'); setError(''); }} className={`flex-1 py-2 rounded-lg text-sm font-bold flex items-center justify-center transition-all ${authMethod === 'PHONE' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500'}`}><Phone className="w-4 h-4 mr-2" /> {t('btn_phone')}</button>
+                    </div>
+
+                    {authMethod === 'EMAIL' ? (
+                        <form onSubmit={handleEmailAuth} className="space-y-3">
+                            <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder={t('field_email')} />
+                            <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder={t('password')} />
+                            {authMode === 'REGISTER' && <input type="password" required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all animate-fade-in" placeholder={t('confirm_password')} />}
+                            
+                            {authMode === 'LOGIN' && (
+                                <div className="text-right">
+                                    <button type="button" onClick={() => { setAuthMode('FORGOT'); setError(''); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                        {t('forgot_password')}
+                                    </button>
+                                </div>
+                            )}
+
+                            <button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all mt-2">{authMode === 'LOGIN' ? t('login_button') : "S'inscrire"}{!isLoading && <ArrowRight className="w-4 h-4 ml-2" />}</button>
+                            <div className="text-center mt-2"><button type="button" onClick={() => { setAuthMode(authMode === 'LOGIN' ? 'REGISTER' : 'LOGIN'); setError(''); setConfirmPassword(''); }} className="text-sm text-indigo-600 font-bold hover:underline">{authMode === 'LOGIN' ? "S'inscrire" : "J'ai un compte"}</button></div>
                         </form>
                     ) : (
-                        <form onSubmit={handleOtpSubmit} className="space-y-4 animate-fade-in">
-                            <div className="text-center mb-4"><span className="text-sm text-slate-500">Code envoyé au {phoneNumber}</span><button type="button" onClick={() => { setConfirmationResult(null); setError(''); }} className="text-xs text-indigo-600 font-bold ml-2 hover:underline">Modifier</button></div>
-                            <input type="text" required value={otpCode} onChange={e => setOtpCode(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-center text-xl font-bold tracking-widest text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder="123456" maxLength={6} />
-                            <button type="submit" disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-emerald-200 flex items-center justify-center transition-all">{isLoading ? '...' : t('btn_verify')}</button>
-                        </form>
+                        <div className="space-y-4">
+                            {!confirmationResult ? (
+                                <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                                    <div className="space-y-2"><label className="text-xs font-bold text-slate-500 uppercase">{t('field_phone')}</label><input type="tel" required value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-black placeholder-gray-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder="+33 6..." /></div>
+                                    <div id="recaptcha-container"></div>
+                                    <button type="submit" disabled={isLoading || !phoneNumber} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-indigo-200 flex items-center justify-center transition-all">{isLoading ? '...' : t('btn_send_code')}</button>
+                                </form>
+                            ) : (
+                                <form onSubmit={handleOtpSubmit} className="space-y-4 animate-fade-in">
+                                    <div className="text-center mb-4"><span className="text-sm text-slate-500">Code envoyé au {phoneNumber}</span><button type="button" onClick={() => { setConfirmationResult(null); setError(''); }} className="text-xs text-indigo-600 font-bold ml-2 hover:underline">Modifier</button></div>
+                                    <input type="text" required value={otpCode} onChange={e => setOtpCode(e.target.value)} className="w-full p-3.5 border border-slate-200 rounded-xl bg-slate-50 text-center text-xl font-bold tracking-widest text-slate-800 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" placeholder="123456" maxLength={6} />
+                                    <button type="submit" disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-emerald-200 flex items-center justify-center transition-all">{isLoading ? '...' : t('btn_verify')}</button>
+                                </form>
+                            )}
+                        </div>
                     )}
-                </div>
+                </>
             )}
         </div>
       </div>
