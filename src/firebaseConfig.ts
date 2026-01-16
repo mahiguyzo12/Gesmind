@@ -1,25 +1,27 @@
-import { initializeApp } from 'firebase/app';
-import {
-  getFirestore,
-  enableIndexedDbPersistence,
-  Firestore,
-} from 'firebase/firestore';
-import { getAuth, signInAnonymously } from 'firebase/auth';
-import { FirebaseConfig } from '../types';
+
+import * as firebaseApp from "firebase/app";
+import { getFirestore, enableIndexedDbPersistence, Firestore } from "firebase/firestore";
+import { getAuth, Auth, GoogleAuthProvider } from "firebase/auth";
+import { FirebaseConfig } from "../types";
+
+// Workaround for TypeScript error: Module '"firebase/app"' has no exported member 'initializeApp'
+const { initializeApp, getApp } = firebaseApp as any;
 
 // Stockage de l'instance de base de données
 let db: Firestore | null = null;
+let auth: Auth | null = null;
 let app: any = null;
-let authPromise: Promise<any> | null = null;
+const googleProvider = new GoogleAuthProvider();
 
-// Configuration fournie par l'utilisateur (Extraite du fichier JSON)
-const PRECONFIGURED_CONFIG: FirebaseConfig = {
-  apiKey: 'AIzaSyD52rhcJ6NZFCidCs21Ly3zX_v2MRZHFhI',
-  authDomain: 'original-01-481809.firebaseapp.com',
-  projectId: 'original-01-481809',
-  storageBucket: 'original-01-481809.firebasestorage.app',
-  messagingSenderId: '123822174953',
-  appId: '1:123822174953:web:generic',
+// --- CONFIGURATION FIREBASE ---
+// Mise à jour avec les identifiants de "gesmind-smart-business-hub"
+const PRECONFIGURED_CONFIG: FirebaseConfig | null = {
+  apiKey: "AIzaSyDtreUxFbO3moOMCE53BcAHFOhLSZRUY3E",
+  authDomain: "gesmind-smart-business-hub.firebaseapp.com",
+  projectId: "gesmind-smart-business-hub",
+  storageBucket: "gesmind-smart-business-hub.firebasestorage.app",
+  messagingSenderId: "750957581069",
+  appId: "1:750957581069:web:3c2161689daf3e341a9644"
 };
 
 // Fonction pour initialiser ou réinitialiser Firebase dynamiquement
@@ -27,122 +29,120 @@ export const setupFirebase = (configData: string | FirebaseConfig): boolean => {
   try {
     // Cas spécial: Mode Local
     if (configData === 'LOCAL') {
-      localStorage.setItem('gesmind_db_mode', 'LOCAL');
-      db = null;
-      console.log('Mode Local activé.');
-      return true;
+        localStorage.setItem('gesmind_db_mode', 'LOCAL');
+        db = null; 
+        auth = null;
+        console.log("Mode Local activé.");
+        return true;
     }
 
     let config: FirebaseConfig;
-
+    
     // Parse JSON safely
     try {
-      config =
-        typeof configData === 'string' ? JSON.parse(configData) : configData;
+        config = typeof configData === 'string' ? JSON.parse(configData) : configData;
     } catch (parseError) {
-      console.warn('Format JSON invalide détecté lors de la configuration.');
-      return false;
+        console.warn("Format JSON invalide détecté lors de la configuration.");
+        return false;
     }
-
+    
     if (config && config.apiKey && config.projectId) {
       // Sauvegarde dans localStorage
       localStorage.setItem('gesmind_firebase_config', JSON.stringify(config));
       localStorage.setItem('gesmind_db_mode', 'CLOUD');
-
+      
       return initializeFirebaseInstance(config);
     }
     return false;
   } catch (e) {
-    console.error('Erreur configuration Firebase:', e);
+    console.error("Erreur configuration Firebase:", e);
     return false;
   }
 };
 
 const initializeFirebaseInstance = (config: FirebaseConfig): boolean => {
-  try {
-    app = initializeApp(config);
-
-    // Initialisation de l'authentification
-    // Tentative de connexion anonyme pour satisfaire les règles de sécurité "request.auth != null"
-    const auth = getAuth(app);
-
-    // On stocke la promesse pour pouvoir l'attendre ailleurs
-    authPromise = signInAnonymously(auth)
-      .then((userCredential) => {
-        console.log(
-          'Connexion anonyme réussie (Auth) :',
-          userCredential.user.uid
-        );
-      })
-      .catch((err) => {
-        console.warn(
-          "La connexion anonyme a échoué. Vérifiez si 'Anonymous Auth' est activé dans la console Firebase.",
-          err
-        );
-      });
-
-    db = getFirestore(app);
-
-    // Activation du mode Hors-Ligne pour Firestore (Cache persistant)
-    if (typeof window !== 'undefined') {
-      enableIndexedDbPersistence(db).catch((err) => {
-        if (err.code === 'failed-precondition') {
-          // Probablement plusieurs onglets ouverts
-          console.warn(
-            'Persistance Firestore désactivée : Plusieurs onglets ouverts.'
-          );
-        } else if (err.code === 'unimplemented') {
-          // Le navigateur ne supporte pas la persistance (ex: mode privé)
-          console.warn(
-            'Persistance Firestore non supportée par ce navigateur.'
-          );
-        }
-      });
-    }
-
-    console.log('Firebase initialisé avec succès :', config.projectId);
-    return true;
-  } catch (initError) {
-    console.error(
-      "Erreur lors de l'initialisation de l'instance Firebase:",
-      initError
-    );
-    return false;
-  }
-};
-
-// Helper pour attendre que l'auth soit prête avant de lancer des requêtes
-export const ensureAuthReady = async () => {
-  if (authPromise) {
     try {
-      await authPromise;
-    } catch (e) {
-      console.error('Attente Auth échouée', e);
+        // Protection basique contre re-init si même config
+        try {
+            app = initializeApp(config);
+        } catch (e: any) {
+            // Si déjà initialisé (ex: Hot Reload), on récupère l'instance existante
+            if (e.code === 'app/duplicate-app') {
+                 try {
+                    app = getApp();
+                 } catch (err) {
+                    console.warn("Impossible de récupérer l'app existante:", err);
+                 }
+                 console.log("Firebase app already initialized, using existing instance.");
+            } else {
+                 console.warn("Firebase init warning:", e.message);
+            }
+        }
+        
+        // Sécurité supplémentaire si app est toujours null
+        if (!app) {
+             try {
+                app = getApp();
+             } catch(e) {
+                console.error("Impossible de récupérer l'instance Firebase.");
+                return false;
+             }
+        }
+
+        auth = getAuth(app);
+        db = getFirestore(app);
+        
+        // Activation du mode Hors-Ligne pour Firestore (Cache persistant)
+        if (typeof window !== 'undefined') {
+            enableIndexedDbPersistence(db).catch((err) => {
+                if (err.code === 'failed-precondition') {
+                    console.warn('Persistance Firestore désactivée : Plusieurs onglets ouverts.');
+                } else if (err.code === 'unimplemented') {
+                    console.warn('Persistance Firestore non supportée par ce navigateur.');
+                }
+            });
+        }
+        
+        console.log("Firebase initialisé avec succès :", config.projectId);
+        return true;
+    } catch (initError) {
+        console.error("Erreur lors de l'initialisation de l'instance Firebase:", initError);
+        return false;
     }
-  }
+}
+
+export const ensureAuthReady = async () => {
+    if (auth && auth.currentUser) return;
 };
 
 // Tentative de chargement au démarrage
 const dbMode = localStorage.getItem('gesmind_db_mode');
-const savedConfig = localStorage.getItem('gesmind_firebase_config');
+const savedConfigStr = localStorage.getItem('gesmind_firebase_config');
+
+// Logique de priorité :
+let configToLoad: string | FirebaseConfig | null = null;
 
 if (dbMode === 'LOCAL') {
-  console.log('Démarrage en mode Local.');
-  db = null;
-} else if (savedConfig) {
-  // Priorité à la configuration sauvegardée manuellement
-  setupFirebase(savedConfig);
+    console.log("Démarrage en mode Local.");
+    db = null;
 } else {
-  // Sinon, tentative d'utilisation de la configuration pré-injectée
-  console.log('Tentative de connexion avec la configuration par défaut...');
-  const success = initializeFirebaseInstance(PRECONFIGURED_CONFIG);
-  if (success) {
-    localStorage.setItem(
-      'gesmind_firebase_config',
-      JSON.stringify(PRECONFIGURED_CONFIG)
-    );
-    localStorage.setItem('gesmind_db_mode', 'CLOUD');
-  }
+    // 1. Utiliser la configuration pré-configurée si disponible et valide
+    if (PRECONFIGURED_CONFIG && PRECONFIGURED_CONFIG.apiKey !== "VOTRE_API_KEY_ICI") {
+        configToLoad = PRECONFIGURED_CONFIG;
+        // On met à jour le cache
+        localStorage.setItem('gesmind_firebase_config', JSON.stringify(PRECONFIGURED_CONFIG));
+        localStorage.setItem('gesmind_db_mode', 'CLOUD');
+    } 
+    // 2. Sinon, on regarde si une config a été injectée manuellement et stockée
+    else if (savedConfigStr) {
+        configToLoad = savedConfigStr;
+    }
+    
+    if (configToLoad) {
+        setupFirebase(configToLoad);
+    } else {
+        console.log("Aucune configuration Firebase valide détectée. L'application démarrera en mode configuration ou local.");
+    }
 }
 
-export { db };
+export { db, auth, googleProvider };

@@ -3,8 +3,8 @@ const path = require('path');
 const { autoUpdater } = require('electron-updater');
 
 // Configuration des logs de mise à jour (optionnel mais recommandé)
-autoUpdater.logger = require('electron-log');
-autoUpdater.logger.transports.file.level = 'info';
+autoUpdater.logger = require("electron-log");
+autoUpdater.logger.transports.file.level = "info";
 
 let mainWindow;
 
@@ -15,18 +15,18 @@ function createWindow() {
     minWidth: 1024,
     minHeight: 768,
     title: 'Gesmind',
-    // icon: path.join(__dirname, '../public/favicon.ico'),
+    // icon: path.join(__dirname, '../public/favicon.ico'), 
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false, // Attention: Pour la prod, contextIsolation: true est plus sûr, mais nécessite un preload script.
-      devTools: false,
+      devTools: false 
     },
-    autoHideMenuBar: true,
+    autoHideMenuBar: true
   });
 
   const indexPath = path.join(__dirname, '../dist/index.html');
-
-  mainWindow.loadFile(indexPath).catch((e) => {
+  
+  mainWindow.loadFile(indexPath).catch(e => {
     console.error('Erreur chargement index.html:', e);
   });
 
@@ -71,5 +71,5 @@ ipcMain.on('restart_app', () => {
 
 // IPC : Vérification manuelle demandée depuis les paramètres
 ipcMain.on('check_for_updates', () => {
-  autoUpdater.checkForUpdates();
+    autoUpdater.checkForUpdates();
 });

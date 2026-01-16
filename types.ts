@@ -1,3 +1,4 @@
+
 export interface InventoryItem {
   id: string;
   name: string;
@@ -5,13 +6,13 @@ export interface InventoryItem {
   category: string;
   quantity: number;
   minQuantity: number;
-  purchasePrice: number;
-  price: number;
+  purchasePrice: number; 
+  price: number; 
   supplier: string;
   location: string;
   description: string;
   lastUpdated: string;
-  createdBy?: string;
+  createdBy?: string; 
 }
 
 export enum ViewState {
@@ -21,13 +22,13 @@ export enum ViewState {
   INVENTORY = 'INVENTORY',
   COMMERCIAL = 'COMMERCIAL',
   EXPENSES = 'EXPENSES',
-  PERSONNEL = 'PERSONNEL',
+  PERSONNEL = 'PERSONNEL', 
   CUSTOMERS = 'CUSTOMERS',
   SUPPLIERS = 'SUPPLIERS',
   TREASURY = 'TREASURY',
   USERS = 'USERS',
   AI_INSIGHTS = 'AI_INSIGHTS',
-  SETTINGS = 'SETTINGS',
+  SETTINGS = 'SETTINGS'
 }
 
 export type CloudProvider = 'GOOGLE_DRIVE' | 'ONEDRIVE' | 'DROPBOX' | 'NONE';
@@ -38,7 +39,6 @@ export interface StoreMetadata {
   id: string;
   name: string;
   logoUrl?: string;
-  ownerId: string;
 }
 
 export interface StoreSettings {
@@ -50,27 +50,32 @@ export interface StoreSettings {
   phone: string;
   email: string;
   website?: string;
-
+  
   // Infos Légales & Fiscales
-  rccm?: string;
-  nif?: string;
-  legalStatus?: string;
-
-  logoUrl?: string;
-  recoveryKey?: string;
+  rccm?: string; 
+  nif?: string; 
+  legalStatus?: string; 
+  
+  logoUrl?: string; 
+  recoveryKey?: string; 
   language: string;
   lastCloudSync?: string;
   cloudProvider?: CloudProvider;
-  lastClosingDate?: string;
-  githubRepo?: string;
+  lastClosingDate?: string; 
+  githubRepo?: string; 
   themeMode?: ThemeMode;
-  themeColor?: string;
+  themeColor?: string; 
+}
+
+export interface AISuggestion {
+  message: string;
+  module: string;
 }
 
 export interface AIAnalysisResult {
   summary: string;
   alerts: string[];
-  suggestions: string[];
+  suggestions: AISuggestion[];
 }
 
 export interface GeneratedItemData {
@@ -85,23 +90,18 @@ export interface GeneratedItemData {
 export interface Currency {
   code: string;
   label: string;
-  rate: number;
+  rate: number; 
   symbol: string;
 }
 
 export type TransactionType = 'SALE' | 'PURCHASE';
-export type PaymentMethod =
-  | 'CASH'
-  | 'CARD'
-  | 'MOBILE_MONEY'
-  | 'CHECK'
-  | 'OTHER';
+export type PaymentMethod = 'CASH' | 'CARD' | 'MOBILE_MONEY' | 'CHECK' | 'OTHER';
 
 export interface TransactionItem {
   productId: string;
   productName: string;
   quantity: number;
-  unitPrice: number;
+  unitPrice: number; 
 }
 
 export interface Transaction {
@@ -109,41 +109,33 @@ export interface Transaction {
   type: TransactionType;
   date: string;
   items: TransactionItem[];
-  totalAmount: number;
-  amountPaid: number;
-  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID';
+  totalAmount: number; 
+  amountPaid: number; 
+  paymentStatus: 'PAID' | 'PARTIAL' | 'UNPAID'; 
   paymentMethod?: PaymentMethod; // Important pour le calcul de caisse
   isLocked?: boolean; // Verrouillage après clôture
-  paidAt?: string;
+  paidAt?: string; 
   status: 'COMPLETED' | 'PENDING' | 'CANCELLED';
   sellerId: string; // registerId conceptuel
   sellerName: string;
-
+  
   customerId?: string;
   customerName?: string;
   supplierId?: string;
   supplierName?: string;
-
+  
   notes?: string;
 }
 
-export type ExpenseCategory =
-  | 'RENT'
-  | 'SALARY'
-  | 'UTILITIES'
-  | 'TRANSPORT'
-  | 'MARKETING'
-  | 'TAX'
-  | 'MAINTENANCE'
-  | 'OTHER';
+export type ExpenseCategory = 'RENT' | 'SALARY' | 'UTILITIES' | 'TRANSPORT' | 'MARKETING' | 'TAX' | 'MAINTENANCE' | 'OTHER';
 
 export interface Expense {
   id: string;
   date: string;
   category: ExpenseCategory;
   description: string;
-  amount: number;
-  paidBy: string;
+  amount: number; 
+  paidBy: string; 
 }
 
 export type UserRole = 'ADMIN' | 'SELLER' | 'USER';
@@ -151,54 +143,55 @@ export type UserRole = 'ADMIN' | 'SELLER' | 'USER';
 export interface EmployeeDocument {
   id: string;
   name: string;
-  type: string;
+  type: string; 
   date: string;
-  content: string;
+  content: string; 
 }
 
 export interface User {
   id: string;
-  name: string;
+  name: string; 
   role: UserRole;
-  pin: string;
+  pin: string; 
+  authUid?: string; // LIEN FIREBASE AUTH
   avatar?: string;
-  email?: string;
-  phone?: string;
-  commissionRate?: number;
-  permissions: string[];
-  lastLogin?: string;
+  email?: string; 
+  phone?: string; 
+  commissionRate?: number; 
+  permissions: string[]; 
+  lastLogin?: string; 
 }
 
 export interface Employee {
   id: string;
   fullName: string;
-  photo?: string;
-  jobTitle: string;
+  photo?: string; 
+  jobTitle: string; 
   phone?: string;
   email?: string;
   address?: string;
   city?: string;
   country?: string;
   zipCode?: string;
-
+  
   gender?: 'M' | 'F';
-  birthDate?: string;
-  placeOfBirth?: string;
+  birthDate?: string; 
+  placeOfBirth?: string; 
   residence?: string;
   childrenCount?: number;
   maritalStatus?: 'SINGLE' | 'MARRIED' | 'DIVORCED' | 'WIDOWED';
-
+  
   emergencyContact?: {
     name: string;
     relationship: string;
     phone: string;
   };
 
-  baseSalary: number;
+  baseSalary: number; 
   hireDate: string;
-  department?: string;
-
-  documents: EmployeeDocument[];
+  department?: string; 
+  
+  documents: EmployeeDocument[]; 
   notes?: string;
 }
 
@@ -208,7 +201,7 @@ export interface Customer {
   phone: string;
   email?: string;
   address?: string;
-  totalSpent: number;
+  totalSpent: number; 
   lastPurchaseDate?: string;
   notes?: string;
 }
@@ -224,21 +217,15 @@ export interface Supplier {
   notes?: string;
 }
 
-export type CashMovementType =
-  | 'SALE'
-  | 'PURCHASE'
-  | 'DEPOSIT'
-  | 'WITHDRAWAL'
-  | 'EXPENSE'
-  | 'BANK_DEPOSIT';
+export type CashMovementType = 'SALE' | 'PURCHASE' | 'DEPOSIT' | 'WITHDRAWAL' | 'EXPENSE' | 'BANK_DEPOSIT';
 
 export interface CashMovement {
   id: string;
   date: string;
   type: CashMovementType;
-  amount: number;
+  amount: number; 
   description: string;
-  performedBy: string;
+  performedBy: string; 
 }
 
 export interface CashClosing {
@@ -246,32 +233,32 @@ export interface CashClosing {
   date: string; // Date de clôture (ISO)
   registerId: string; // ID de la caisse/utilisateur
   closedBy: string; // "user" ou "system"
-
+  
   // Totaux calculés
   totalSales: number; // Ventes totales
-
+  
   // Répartition Paiements
   amountCash: number;
   amountMobileMoney: number;
   amountCard: number;
-
+  
   // Écart de caisse
   cashExpected: number; // Théorique
   cashReal: number; // Saisi par l'utilisateur (ou = expected si auto)
   difference: number; // Real - Expected
-
+  
   status: 'closed';
   autoClosed: boolean; // True si généré par le système
   comment?: string;
-
+  
   // Legacy fields compatibility (optional but kept for transition)
-  totalCashIn?: number;
-  totalCashOut?: number;
-  periodStart?: string;
-  openingBalance?: number;
-  closingBalance?: number;
-  totalIn?: number;
-  totalOut?: number;
+  totalCashIn?: number; 
+  totalCashOut?: number; 
+  periodStart?: string; 
+  openingBalance?: number; 
+  closingBalance?: number; 
+  totalIn?: number; 
+  totalOut?: number; 
   type?: 'MANUAL' | 'AUTO';
 }
 
@@ -289,7 +276,7 @@ export interface BackupData {
   currency: string;
   inventory: InventoryItem[];
   users: User[];
-  employees: Employee[];
+  employees: Employee[]; 
   customers: Customer[];
   suppliers: Supplier[];
   transactions: Transaction[];
