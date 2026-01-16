@@ -206,7 +206,7 @@ export const Auth: React.FC<AuthProps> = ({
         themeMode: 'light',
         themeColor: '#4f46e5',
         lastClosingDate: now,
-        githubRepo: 'mahiguyzo12/stockmind-update-server'
+        githubRepo: 'guyzomahi-cloud/Gesmind'
     };
 
     // 2. Prepare User (Login)
