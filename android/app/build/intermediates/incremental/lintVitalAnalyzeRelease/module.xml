@@ -1,0 +1,19 @@
+<lint-module
+    format="1"
+    dir="/workspaces/Gesmind/android/app"
+    name=":app"
+    type="APP"
+    maven="android:app:"
+    agpVersion="8.0.0"
+    buildFolder="build"
+    bootClassPath="/home/codespace/android-sdk/platforms/android-33/android.jar:/home/codespace/android-sdk/build-tools/30.0.3/core-lambda-stubs.jar"
+    javaSourceLevel="17"
+    compileTarget="android-33"
+    neverShrinking="true">
+  <lintOptions
+      abortOnError="true"
+      absolutePaths="true"
+      checkReleaseBuilds="true"
+      explainIssues="true"/>
+  <variant name="release"/>
+</lint-module>

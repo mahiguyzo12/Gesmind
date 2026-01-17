@@ -33,12 +33,20 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
         Identifie les risques de rupture, les surstocks potentiels et donne des conseils pour optimiser la valeur du stock.
         Prends en compte la diversité des fournisseurs si mentionnés.
         
-        RÉPONDS UNIQUEMENT AVEC UN OBJET JSON VALIDE suivant ce schéma, sans markdown (pas de \`\`\`json) :
+        RÉPONDS UNIQUEMENT AVEC UN OBJET JSON VALIDE suivant ce schéma exact, sans markdown (pas de \`\`\`json) :
         {
           "summary": "Résumé global de l'état du stock avec mention de la valeur totale",
           "alerts": ["Liste des alertes (rupture, stock bas, etc.)"],
-          "suggestions": ["Conseils pour optimiser le stock"]
+          "suggestions": [
+             { "message": "Conseil d'action précis...", "module": "MODULE_NAME" }
+          ]
         }
+        
+        Pour le champ "module" dans suggestions, choisis la valeur la plus pertinente parmi :
+        - 'INVENTORY' (pour gestion stock, réappro, prix)
+        - 'SUPPLIERS' (pour négociation, commande fournisseur)
+        - 'COMMERCIAL' (pour promotions, ventes)
+        - 'DASHBOARD' (pour analyse générale)
         
         Données: ${inventorySummary}
       `;

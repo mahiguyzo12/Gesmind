@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Gesmind</string>
-    <string name="title_activity_main">Gesmind</string>
-    <string name="package_name">com.gesmind.app</string>
-    <string name="custom_url_scheme">com.gesmind.app</string>
-</resources>

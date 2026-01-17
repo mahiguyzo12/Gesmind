@@ -1,7 +1,7 @@
 
-import React from 'react';
-import { ViewState, User } from '../types';
-import { ArrowLeft, User as UserIcon, LogOut, Home } from 'lucide-react';
+import React, { useState } from 'react';
+import { ViewState, User, StoreMetadata } from '../types';
+import { ArrowLeft, User as UserIcon, LogOut, Home, Store, ChevronDown, PlusCircle } from 'lucide-react';
 import { getTranslation } from '../translations';
 
 interface HeaderProps {
@@ -12,15 +12,29 @@ interface HeaderProps {
   title?: string;
   themeColor?: string;
   lang?: string;
+  availableStores?: StoreMetadata[];
+  currentStoreId?: string;
+  onSwitchStore?: (storeId: string) => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate, currentUser, onLogout, title, themeColor = '#1e293b', lang = 'fr' }) => {
-  
+export const Header: React.FC<HeaderProps> = ({ 
+  currentView, 
+  onNavigate, 
+  currentUser, 
+  onLogout, 
+  title, 
+  themeColor = '#1e293b', 
+  lang = 'fr',
+  availableStores = [],
+  currentStoreId,
+  onSwitchStore
+}) => {
   const handleLogoutClick = () => {
     onLogout();
   };
 
   const t = (key: string) => getTranslation(lang, key);
+  const isAdmin = currentUser.role === 'ADMIN';
 
   return (
     <header 

@@ -8,6 +8,7 @@ import { AIAdvisor } from './components/AIAdvisor';
 import { Commercial } from './components/Commercial';
 import { Personnel } from './components/Personnel'; 
 import { Auth } from './components/Auth';
+import { CloudSetup } from './components/CloudSetup'; 
 import { Users } from './components/Users';
 import { Treasury } from './components/Treasury';
 import { Settings } from './components/Settings';
@@ -18,13 +19,15 @@ import { Expenses } from './components/Expenses';
 import { UpdateBanner } from './components/UpdateBanner';
 import { Toast } from './components/Toast'; 
 import { SplashScreen } from './components/SplashScreen'; 
-import { LoadingScreen } from './components/LoadingScreen'; // IMPORT AJOUTÉ
+import { LoadingScreen } from './components/LoadingScreen';
+import { LanguageSelector } from './components/LanguageSelector'; 
 import { InventoryItem, ViewState, Transaction, User, CashMovement, StoreSettings, BackupData, CloudProvider, CashClosing, Customer, Supplier, AppUpdate, StoreMetadata, Expense, Employee } from './types';
 import { CURRENCIES, PERMISSION_CATEGORIES } from './constants';
 import { checkForUpdates } from './services/updateService';
 import { LogOut, WifiOff, Eye, X, Box } from 'lucide-react';
 import { getTranslation } from './translations';
-import { db, setupFirebase } from './src/firebaseConfig';
+import { db, auth } from './src/firebaseConfig';
+import { onAuthStateChanged } from 'firebase/auth';
 import { 
   createStoreInDB, 
   deleteStoreFromDB,
@@ -43,7 +46,9 @@ import {
   deleteData,
   updateSettingsInDB,
   getStoreMetadata,
-  processForgottenClosings 
+  processForgottenClosings,
+  getUserByAuthUid,
+  getUserInStoreByAuthUid 
 } from './src/services/firestoreService';
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -63,7 +68,11 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewState>(ViewState.LOGIN);
   
   const [isLaunching, setIsLaunching] = useState(true);
+  const [isLanguageSelected, setIsLanguageSelected] = useState(false);
+  const [isCloudStepDone, setIsCloudStepDone] = useState(false); 
+  
   const [isCreatingStoreLoading, setIsCreatingStoreLoading] = useState(false);
+  const [isAuthChecking, setIsAuthChecking] = useState(true); 
   
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [loadingText, setLoadingText] = useState('Initialisation...');
@@ -91,37 +100,98 @@ const App: React.FC = () => {
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
   const [availableUpdate, setAvailableUpdate] = useState<AppUpdate | null>(null);
   
-  // --- INITIALISATION ---
+  // --- INITIALISATION & FIREBASE AUTH LISTENER ---
   useEffect(() => {
     const initializeApp = async () => {
       try {
         if (db && !isDbConfigured) setIsDbConfigured(true);
         
-        // Simulation rapide des tâches de fond pendant le splash
         await new Promise(r => setTimeout(r, 500)); 
 
         const savedStores = localStorage.getItem('gesmind_known_stores');
         const lastStore = localStorage.getItem('gesmind_last_store_id');
         const savedCurrency = localStorage.getItem('gesmind_local_currency');
+        const savedLanguage = localStorage.getItem('gesmind_language');
+        const savedCloudStep = localStorage.getItem('gesmind_cloud_step_done'); // Check persistence
         
+        if (savedLanguage) {
+            setStoreSettings(prev => ({ ...prev, language: savedLanguage }));
+            setIsLanguageSelected(true);
+        } else {
+            setIsLanguageSelected(false);
+        }
+
+        // If local mode was explicitly chosen previously
+        if (savedCloudStep === 'true' || localStorage.getItem('gesmind_db_mode') === 'LOCAL') {
+            setIsCloudStepDone(true);
+        }
+
         if (savedStores) {
           try {
             const list = JSON.parse(savedStores);
             setKnownStores(list);
-            if (list.length > 0 && lastStore) setCurrentStoreId(lastStore);
-            else if (list.length > 0) setCurrentStoreId(list[0].id);
+            if (list.length > 0 && lastStore && !currentStoreId) setCurrentStoreId(lastStore);
           } catch (e) { console.error("Error loading stores", e); }
         }
         
         if (savedCurrency) setCurrencyCode(savedCurrency);
 
-        // Note: on ne set pas isLaunching à false ici, c'est le SplashScreen qui appellera le callback
       } catch (error) {
         console.error("Erreur init", error);
       }
     };
 
     initializeApp();
+
+    // Listener Firebase Auth
+    if (auth) {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // If user is logged in, Cloud Step is implicitly done
+                setIsCloudStepDone(true);
+                localStorage.setItem('gesmind_cloud_step_done', 'true');
+
+                if (user.emailVerified) {
+                    try {
+                        let profileData: {user: User, storeId: string} | null = null;
+                        
+                        // Try to load last store first for better UX
+                        const lastStoreId = localStorage.getItem('gesmind_last_store_id');
+                        if (lastStoreId) {
+                            const specificUser = await getUserInStoreByAuthUid(lastStoreId, user.uid);
+                            if (specificUser) {
+                                profileData = { user: specificUser, storeId: lastStoreId };
+                            }
+                        }
+
+                        // Fallback: search any store
+                        if (!profileData) {
+                            profileData = await getUserByAuthUid(user.uid);
+                        }
+
+                        if (profileData) {
+                            setCurrentUser(profileData.user);
+                            setCurrentStoreId(profileData.storeId);
+                            setCurrentView(ViewState.MENU);
+                            updateData(profileData.storeId, 'users', profileData.user.id, { lastLogin: new Date().toISOString() });
+                        } else {
+                            // User logged in but no profile in Firestore (New user creating store)
+                            setCurrentUser(null);
+                        }
+                    } catch (e) {
+                        console.error("Erreur récupération profil user:", e);
+                        setCurrentUser(null);
+                    }
+                }
+            } else {
+                setCurrentUser(null);
+            }
+            setIsAuthChecking(false);
+        });
+        return () => unsubscribe();
+    } else {
+        setIsAuthChecking(false);
+    }
   }, []);
 
   useEffect(() => {
@@ -149,13 +219,15 @@ const App: React.FC = () => {
     const unsubSettings = subscribeToSettings(currentStoreId, (settings) => {
       if (settings) {
         setStoreSettings(settings);
-        setKnownStores(prev => prev.map(s => s.id === currentStoreId ? { ...s, name: settings.name, logoUrl: settings.logoUrl } : s));
+        localStorage.setItem('gesmind_language', settings.language); 
+        setKnownStores(prev => {
+            if (!prev.find(s => s.id === currentStoreId)) {
+                return [...prev, { id: currentStoreId, name: settings.name, logoUrl: settings.logoUrl }];
+            }
+            return prev.map(s => s.id === currentStoreId ? { ...s, name: settings.name, logoUrl: settings.logoUrl } : s);
+        });
       }
     });
-
-    setCurrentView(ViewState.LOGIN);
-    setCurrentUser(null);
-    setSupervisionTarget(null);
 
     return () => { unsubInv(); unsubTx(); unsubUsers(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); unsubSettings(); };
   }, [currentStoreId, isDbConfigured]);
@@ -172,17 +244,6 @@ const App: React.FC = () => {
         setTimeout(runAutoCloseCheck, 3000);
     }
   }, [currentUser, currentStoreId, isDbConfigured]);
-
-  useEffect(() => {
-    if (!currentUser || !currentStoreId) return;
-    const updateHeartbeat = () => {
-        const now = new Date().toISOString();
-        updateData(currentStoreId, 'users', currentUser.id, { lastLogin: now });
-    };
-    updateHeartbeat();
-    const interval = setInterval(updateHeartbeat, 120000); 
-    return () => clearInterval(interval);
-  }, [currentUser?.id, currentStoreId]);
 
   useEffect(() => {
     const check = async () => {
@@ -204,13 +265,18 @@ const App: React.FC = () => {
     root.style.setProperty('--primary-color', storeSettings.themeColor || '#4f46e5');
   }, [storeSettings.themeMode, storeSettings.themeColor]);
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => setToast({ message, type });
-
-  const handleDbSetup = (configJson: string) => {
-    const success = setupFirebase(configJson);
-    if (success) { setIsDbConfigured(true); showToast("Configuration Firebase appliquée avec succès !", "success"); return true; }
-    showToast("Erreur de configuration. Vérifiez le format JSON.", "error"); return false;
+  const handleLanguageSelection = (langCode: string) => {
+      localStorage.setItem('gesmind_language', langCode);
+      setStoreSettings(prev => ({ ...prev, language: langCode }));
+      setIsLanguageSelected(true);
   };
+
+  const handleCloudSetupComplete = () => {
+      setIsCloudStepDone(true);
+      localStorage.setItem('gesmind_cloud_step_done', 'true');
+  };
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => setToast({ message, type });
 
   const handleFindStore = async (storeId: string): Promise<StoreMetadata | null> => {
       const known = knownStores.find(s => s.id === storeId);
@@ -226,8 +292,45 @@ const App: React.FC = () => {
       showToast("Boutique sélectionnée !", "success");
   };
 
+  const handleSwitchStore = async (targetStoreId: string) => {
+      // Cas "Créer une entreprise"
+      if (targetStoreId === 'NEW') {
+          setCurrentUser(null);
+          setCurrentStoreId(null);
+          setCurrentView(ViewState.LOGIN); // Forcera Auth en mode setup/create
+          return;
+      }
+
+      if (targetStoreId === currentStoreId) return;
+
+      setIsCreatingStoreLoading(true);
+      setLoadingText("Changement d'entreprise...");
+
+      // Tentative de connexion à l'autre boutique avec l'utilisateur Firebase actuel
+      if (auth && auth.currentUser) {
+          const userProfile = await getUserInStoreByAuthUid(targetStoreId, auth.currentUser.uid);
+          if (userProfile) {
+              setCurrentUser(userProfile);
+              setCurrentStoreId(targetStoreId);
+              setCurrentView(ViewState.MENU);
+              showToast(`Connecté à ${knownStores.find(s => s.id === targetStoreId)?.name || 'l\'entreprise'}`, "success");
+          } else {
+              showToast("Accès refusé. Votre compte n'est pas lié à cette entreprise.", "error");
+          }
+      } else {
+          // Mode Local
+          setCurrentStoreId(targetStoreId);
+          setCurrentUser(null); // Force re-login local
+      }
+      setIsCreatingStoreLoading(false);
+  };
+
   const saveStoreSettings = (newData: StoreSettings) => {
+    if (newData.language !== storeSettings.language) {
+        localStorage.setItem('gesmind_language', newData.language);
+    }
     if (currentStoreId) { updateSettingsInDB(currentStoreId, newData); showToast("Paramètres sauvegardés", "success"); }
+    else { setStoreSettings(newData); } 
   };
 
   const saveCurrency = (code: string) => {
@@ -236,7 +339,6 @@ const App: React.FC = () => {
 
   const selectedCurrency = CURRENCIES[currencyCode] || CURRENCIES['EUR'];
 
-  // ... (CRUD Handlers kept identical) ...
   const handleAddItem = (item: InventoryItem) => { if (!currentStoreId) return; if (supervisionTarget) item.createdBy = supervisionTarget.id; addData(currentStoreId, 'inventory', item); showToast("Produit ajouté", "success"); }
   const handleUpdateItem = (id: string, updatedItem: Partial<InventoryItem>) => currentStoreId && updateData(currentStoreId, 'inventory', id, updatedItem);
   const handleDeleteItem = (id: string) => { if(currentStoreId) { deleteData(currentStoreId, 'inventory', id); showToast("Produit supprimé", "info"); } };
@@ -300,9 +402,9 @@ const App: React.FC = () => {
     setLoadingProgress(0);
     setLoadingText('Création de votre entreprise...');
 
-    const progressInterval = setInterval(() => { setLoadingProgress(prev => Math.min(prev + 5, 90)); }, 100);
-    const newStoreId = `store_${Date.now()}`;
+    const progressInterval = setInterval(() => { setLoadingProgress(prev => Math.min(prev + 5, 90)); }, 200);
     
+    const newStoreId = `store_${Date.now()}`;
     const allPermissions: string[] = [];
     PERMISSION_CATEGORIES.forEach(cat => { cat.actions.forEach(act => { allPermissions.push(`${cat.id}.${act.id}`); }); });
     adminUser.permissions = allPermissions;
@@ -310,7 +412,12 @@ const App: React.FC = () => {
     const newMetadata: StoreMetadata = { id: newStoreId, name: settings.name, logoUrl: settings.logoUrl };
 
     try {
-      await createStoreInDB(newStoreId, newMetadata, settings, adminUser, adminEmployee);
+      // Race condition with timeout to prevent infinite loading
+      await Promise.race([
+          createStoreInDB(newStoreId, newMetadata, settings, adminUser, adminEmployee),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Le serveur met trop de temps à répondre (Timeout).")), 20000))
+      ]);
+
       clearInterval(progressInterval);
       setLoadingProgress(100);
       setLoadingText('Entreprise prête !');
@@ -319,14 +426,50 @@ const App: React.FC = () => {
         setKnownStores(prev => [...prev, newMetadata]);
         setCurrentStoreId(newStoreId);
         setIsCreatingStoreLoading(false);
-        showToast("Entreprise créée avec succès", "success");
+        // Connexion automatique après création
+        handleLogin(adminUser);
+        showToast("Entreprise créée et connectée !", "success");
       }, 800);
 
-    } catch (e) {
+    } catch (e: any) {
       clearInterval(progressInterval);
-      setIsCreatingStoreLoading(false);
-      alert("Erreur lors de la création de la boutique.");
+      setIsCreatingStoreLoading(false); // Force stop loading
+      console.error(e);
+      
+      let msg = e.message || "Erreur inconnue";
+      if (e.code === 'permission-denied') {
+          msg = "Permission refusée. Vérifiez votre connexion compte.";
+      }
+      showToast(msg, "error");
+      
+      // Re-throw pour que le composant Auth (s'il est encore monté) puisse aussi gérer l'erreur localement
+      throw e; 
     }
+  };
+
+  const handleImportBackup = async (data: BackupData) => {
+      setIsCreatingStoreLoading(true);
+      setLoadingText("Restauration des données...");
+      
+      const newStoreId = `store_${Date.now()}`;
+      const metadata: StoreMetadata = { id: newStoreId, name: data.settings.name, logoUrl: data.settings.logoUrl };
+      
+      const adminUser = data.users.find(u => u.role === 'ADMIN') || data.users[0];
+      if (auth?.currentUser) {
+          adminUser.authUid = auth.currentUser.uid;
+      }
+
+      try {
+          await createStoreInDB(newStoreId, metadata, data.settings, adminUser, data.employees[0]);
+          
+          setKnownStores(prev => [...prev, metadata]);
+          setCurrentStoreId(newStoreId);
+          setIsCreatingStoreLoading(false);
+          showToast("Restauration effectuée (Structure de base)", "success");
+      } catch (e) {
+          setIsCreatingStoreLoading(false);
+          alert("Erreur lors de la restauration.");
+      }
   };
 
   const handleDeleteStore = (adminName: string, adminPin: string): boolean => {
@@ -348,10 +491,6 @@ const App: React.FC = () => {
           const cleanInput = value.trim();
           const registeredEmail = (storeSettings.email || '').trim().toLowerCase();
           if (registeredEmail && registeredEmail === cleanInput.toLowerCase()) return true;
-          const normalize = (str: string) => str.replace(/[^0-9]/g, '');
-          const registeredPhone = normalize(storeSettings.phone || '');
-          const inputPhone = normalize(cleanInput);
-          if (registeredPhone && registeredPhone === inputPhone && registeredPhone.length >= 4) return true;
       }
       return false;
   };
@@ -376,7 +515,16 @@ const App: React.FC = () => {
   };
 
   const requestLogout = () => setIsLogoutModalOpen(true);
-  const confirmLogout = () => { setIsLogoutModalOpen(false); setCurrentUser(null); setSupervisionTarget(null); setCurrentView(ViewState.LOGIN); };
+  
+  const confirmLogout = async () => { 
+      setIsLogoutModalOpen(false); 
+      if (auth) {
+          await auth.signOut();
+      }
+      setCurrentUser(null); 
+      setSupervisionTarget(null); 
+      setCurrentView(ViewState.LOGIN); 
+  };
 
   const handleStartSupervision = (targetUser: User) => { setSupervisionTarget(targetUser); setCurrentView(ViewState.DASHBOARD); showToast(`Mode Supervision : ${targetUser.name}`, "info"); };
   const handleStopSupervision = () => { setSupervisionTarget(null); setCurrentView(ViewState.USERS); showToast("Mode Supervision désactivé", "info"); };
@@ -387,7 +535,9 @@ const App: React.FC = () => {
     const a = document.createElement('a'); a.href = dataStr; a.download = `gesmind_backup_${storeSettings.name}_${new Date().toISOString().split('T')[0]}.json`; a.click(); showToast("Sauvegarde exportée", "success");
   };
 
-  const handleImportData = () => alert("L'importation écrase la base de données. Fonction désactivée par sécurité en mode Cloud.");
+  const handleImportData = (data: BackupData) => {
+      handleImportBackup(data);
+  };
   const handleCloudSync = () => handleExportData();
   const t = (key: string) => getTranslation(storeSettings.language, key);
   
@@ -397,14 +547,20 @@ const App: React.FC = () => {
       const req = mapping[view]; if (!req) return true; return currentUser.permissions.includes(req);
   };
 
-  // --- RENDER SCREEN LOADER ---
   if (isLaunching) {
     return <SplashScreen onFinish={() => setIsLaunching(false)} />;
   }
 
-  // --- RENDER CREATION LOADER (Replaced with LoadingScreen) ---
-  if (isCreatingStoreLoading) {
-      return <LoadingScreen message={loadingText} />;
+  if (!isLanguageSelected) {
+      return <LanguageSelector onSelect={handleLanguageSelection} />;
+  }
+
+  if (!isCloudStepDone && !auth?.currentUser) {
+      return <CloudSetup onComplete={handleCloudSetupComplete} lang={storeSettings.language} />;
+  }
+
+  if (isAuthChecking || isCreatingStoreLoading) {
+      return <LoadingScreen message={isCreatingStoreLoading ? loadingText : "Vérification session..."} />;
   }
 
   if (!currentUser) {
@@ -426,7 +582,7 @@ const App: React.FC = () => {
           onResetPassword={handleAdminResetPin} 
           lang={storeSettings.language}
           isDbConnected={isDbConfigured}
-          onSetupDb={handleDbSetup}
+          onImportBackup={handleImportBackup}
         />
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       </>
@@ -448,6 +604,9 @@ const App: React.FC = () => {
           transactions={transactions}
           users={users}
           currency={selectedCurrency}
+          availableStores={knownStores}
+          currentStoreId={currentStoreId || ''}
+          onSwitchStore={handleSwitchStore}
         />
         {availableUpdate && <UpdateBanner update={availableUpdate} onClose={() => setAvailableUpdate(null)} themeColor={storeSettings.themeColor || '#4f46e5'} />}
         {isLogoutModalOpen && (
@@ -476,8 +635,8 @@ const App: React.FC = () => {
       case ViewState.SUPPLIERS: return <Suppliers suppliers={suppliers} onAddSupplier={handleAddSupplier} onUpdateSupplier={handleUpdateSupplier} onDeleteSupplier={handleDeleteSupplier} currency={selectedCurrency} />;
       case ViewState.TREASURY: return <Treasury movements={cashMovements} closings={cashClosings} transactions={transactions} onAddMovement={handleAddCashMovement} onClosePeriod={() => {}} onSettleTransaction={handleSettleTransaction} lastClosingDate={storeSettings.lastClosingDate} currency={selectedCurrency} currentUser={currentUser} customers={customers} supervisionTarget={supervisionTarget} />;
       case ViewState.USERS: return <Users users={users} onAddUser={handleAddUser} onUpdateUser={handleUpdateUser} onDeleteUser={handleDeleteUser} currentUser={currentUser} onSupervise={handleStartSupervision} onLoginAs={handleLogin} />;
-      case ViewState.AI_INSIGHTS: return <AIAdvisor items={inventory} currency={selectedCurrency} />;
-      case ViewState.SETTINGS: return <Settings currentSettings={storeSettings} onUpdateSettings={saveStoreSettings} currentCurrency={currencyCode} onUpdateCurrency={saveCurrency} currentUser={currentUser} onUpdateUser={handleUpdateUser} onExportData={handleExportData} onImportData={handleImportData} onCloudSync={handleCloudSync} lang={storeSettings.language} inventory={inventory} transactions={transactions} expenses={expenses} cashMovements={cashMovements} />;
+      case ViewState.AI_INSIGHTS: return <AIAdvisor items={inventory} currency={selectedCurrency} onNavigate={setCurrentView} />;
+      case ViewState.SETTINGS: return <Settings currentSettings={storeSettings} onUpdateSettings={saveStoreSettings} currentCurrency={currencyCode} onUpdateCurrency={saveCurrency} currentUser={currentUser} onUpdateUser={handleUpdateUser} onExportData={handleExportData} onImportData={handleImportData} onCloudSync={handleCloudSync} onDeleteStore={handleDeleteStore} lang={storeSettings.language} inventory={inventory} transactions={transactions} expenses={expenses} cashMovements={cashMovements} />;
       default: return <div>Vue non trouvée</div>;
     }
   };
@@ -502,7 +661,18 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans select-none transition-colors duration-300">
       {supervisionTarget && (<div className="bg-amber-500 text-white px-4 py-2 text-sm font-bold flex justify-between items-center shadow-lg z-50"><div className="flex items-center"><Eye className="w-5 h-5 mr-2 animate-pulse" /> MODE SUPERVISION : Vous agissez en tant que {supervisionTarget.name}</div><button onClick={handleStopSupervision} className="bg-white/20 hover:bg-white/30 text-white px-3 py-1 rounded-lg text-xs transition-colors flex items-center"><X className="w-3 h-3 mr-1" /> Quitter</button></div>)}
-      <Header currentView={currentView} onNavigate={setCurrentView} currentUser={currentUser} onLogout={requestLogout} title={getPageTitle()} themeColor={storeSettings.themeColor} lang={storeSettings.language} />
+      <Header 
+        currentView={currentView} 
+        onNavigate={setCurrentView} 
+        currentUser={currentUser} 
+        onLogout={requestLogout} 
+        title={getPageTitle()} 
+        themeColor={storeSettings.themeColor} 
+        lang={storeSettings.language}
+        availableStores={knownStores}
+        currentStoreId={currentStoreId || ''}
+        onSwitchStore={handleSwitchStore}
+      />
       <main className="flex-1 w-full p-4 md:p-8 overflow-y-auto"><div className="max-w-7xl mx-auto animate-fade-in"><GlobalSearch inventory={inventory} transactions={transactions} users={users} onNavigate={setCurrentView} currency={selectedCurrency} currentUser={currentUser} supervisionTarget={supervisionTarget} />{renderContent()}</div></main>
       {availableUpdate && <UpdateBanner update={availableUpdate} onClose={() => setAvailableUpdate(null)} themeColor={storeSettings.themeColor || '#4f46e5'} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}

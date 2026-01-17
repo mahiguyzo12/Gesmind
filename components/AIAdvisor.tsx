@@ -1,14 +1,16 @@
+
 import React, { useState } from 'react';
-import { InventoryItem, AIAnalysisResult, Currency } from '../types';
+import { InventoryItem, AIAnalysisResult, Currency, ViewState } from '../types';
 import { analyzeStock } from '../services/geminiService';
-import { Sparkles, Brain, CheckCircle, AlertOctagon, ArrowRight } from 'lucide-react';
+import { Sparkles, Brain, CheckCircle, AlertOctagon, ArrowRight, ExternalLink } from 'lucide-react';
 
 interface AIAdvisorProps {
   items: InventoryItem[];
   currency: Currency;
+  onNavigate: (view: ViewState) => void;
 }
 
-export const AIAdvisor: React.FC<AIAdvisorProps> = ({ items, currency }) => {
+export const AIAdvisor: React.FC<AIAdvisorProps> = ({ items, currency, onNavigate }) => {
   const [analysis, setAnalysis] = useState<AIAnalysisResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -24,6 +26,24 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ items, currency }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const getModuleLabel = (moduleKey: string) => {
+      switch(moduleKey) {
+          case 'INVENTORY': return 'Stocks';
+          case 'SUPPLIERS': return 'Fournisseurs';
+          case 'COMMERCIAL': return 'Ventes';
+          case 'DASHBOARD': return 'Dashboard';
+          default: return 'Aller';
+      }
+  };
+
+  const handleActionClick = (moduleKey: string) => {
+      if (moduleKey && Object.values(ViewState).includes(moduleKey as ViewState)) {
+          onNavigate(moduleKey as ViewState);
+      } else {
+          onNavigate(ViewState.DASHBOARD);
+      }
   };
 
   return (
@@ -100,20 +120,38 @@ export const AIAdvisor: React.FC<AIAdvisorProps> = ({ items, currency }) => {
             </ul>
           </div>
 
-          {/* Suggestions */}
+          {/* Suggestions with Actions */}
           <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 border-l-4 border-l-green-500">
             <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center">
               <CheckCircle className="w-5 h-5 text-green-500 mr-2" />
               Recommandations d'Optimisation
             </h3>
-            <ul className="space-y-3">
-              {analysis.suggestions.map((suggestion, idx) => (
-                <li key={idx} className="flex items-start bg-green-50/50 p-3 rounded-lg">
-                  <ArrowRight className="w-4 h-4 mt-1 text-green-600 mr-3 flex-shrink-0" />
-                  <span className="text-slate-700">{suggestion}</span>
-                </li>
-              ))}
-            </ul>
+            <div className="space-y-3">
+              {analysis.suggestions.map((suggestion, idx) => {
+                // Compatibility check if suggestion is string (old API response) vs object
+                const message = typeof suggestion === 'string' ? suggestion : suggestion.message;
+                const module = typeof suggestion === 'string' ? null : suggestion.module;
+
+                return (
+                  <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between bg-green-50/50 p-3 rounded-lg gap-3">
+                    <div className="flex items-start">
+                        <ArrowRight className="w-4 h-4 mt-1 text-green-600 mr-3 flex-shrink-0" />
+                        <span className="text-slate-700 text-sm">{message}</span>
+                    </div>
+                    
+                    {module && (
+                        <button 
+                            onClick={() => handleActionClick(module)}
+                            className="flex items-center justify-center bg-white border border-green-200 text-green-700 text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors shadow-sm whitespace-nowrap self-end sm:self-center"
+                        >
+                            {getModuleLabel(module)}
+                            <ExternalLink className="w-3 h-3 ml-1.5" />
+                        </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
           
           <div className="lg:col-span-2 flex justify-end">

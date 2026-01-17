@@ -2,10 +2,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { StoreSettings, User, BackupData, CloudProvider, AppUpdate, ThemeMode, InventoryItem, Transaction, Expense, CashMovement } from '../types';
 import { CURRENCIES, THEME_COLORS } from '../constants';
-import { Settings as SettingsIcon, Globe, Store, Save, User as UserIcon, KeyRound, Database, Download, Upload, Cloud, CheckCircle, Smartphone, Github, RefreshCw, AlertCircle, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, X, Mail, Phone, Eye, EyeOff, Copy, Check, FileText, FileSpreadsheet, File } from 'lucide-react';
+import { Settings as SettingsIcon, Globe, Store, Save, User as UserIcon, KeyRound, Database, Download, Upload, Cloud, CheckCircle, Smartphone, Github, RefreshCw, AlertCircle, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, X, Mail, Phone, Eye, EyeOff, Copy, Check, FileText, FileSpreadsheet, File, Terminal, Play, RotateCcw, Trash2, AlertTriangle } from 'lucide-react';
 import { getTranslation } from '../translations';
-import { db, setupFirebase } from '../src/firebaseConfig';
+import { db } from '../src/firebaseConfig';
 import { generateStoreLogo } from '../services/geminiService';
+import { ALL_LANGUAGES } from './LanguageSelector'; // Import from shared list
 
 interface SettingsProps {
   currentSettings: StoreSettings;
@@ -17,6 +18,7 @@ interface SettingsProps {
   onExportData: () => void;
   onImportData: (data: BackupData) => void;
   onCloudSync: (provider: CloudProvider) => void;
+  onDeleteStore: (adminName: string, adminPin: string) => boolean;
   lang?: string;
   // Data for detailed export
   inventory: InventoryItem[];
@@ -24,19 +26,6 @@ interface SettingsProps {
   expenses: Expense[];
   cashMovements: CashMovement[];
 }
-
-const AVAILABLE_LANGUAGES = [
-  { code: 'fr', label: 'Français' },
-  { code: 'en', label: 'English' },
-  { code: 'es', label: 'Español' },
-  { code: 'de', label: 'Deutsch' },
-  { code: 'it', label: 'Italiano' },
-  { code: 'pt', label: 'Português' },
-  { code: 'zh', label: '中文 (Chinese)' },
-  { code: 'ja', label: '日本語 (Japanese)' },
-  { code: 'ar', label: 'العربية (Arabic)' },
-  { code: 'ru', label: 'Русский (Russian)' },
-];
 
 export const Settings: React.FC<SettingsProps> = ({ 
   currentSettings, 
@@ -48,6 +37,7 @@ export const Settings: React.FC<SettingsProps> = ({
   onExportData,
   onImportData,
   onCloudSync,
+  onDeleteStore,
   lang = 'fr',
   inventory,
   transactions,
@@ -77,11 +67,6 @@ export const Settings: React.FC<SettingsProps> = ({
   const [userPhone, setUserPhone] = useState(currentUser.phone || '');
   const [isProfileSaved, setIsProfileSaved] = useState(false);
   
-  // Firebase Config Modal
-  const [isDbModalOpen, setIsDbModalOpen] = useState(false);
-  const [firebaseJson, setFirebaseJson] = useState('');
-  const [configError, setConfigError] = useState<string | null>(null);
-  
   // LOGO GENERATION STATE
   const [isLogoGenModalOpen, setIsLogoGenModalOpen] = useState(false);
   const [isGeneratingLogo, setIsGeneratingLogo] = useState(false);
@@ -89,8 +74,17 @@ export const Settings: React.FC<SettingsProps> = ({
   const [logoDescription, setLogoDescription] = useState('');
   const [referenceImage, setReferenceImage] = useState<string | undefined>(undefined);
   
+  // CONSOLE MODE STATE
+  const [consoleMode, setConsoleMode] = useState<'INPUT' | 'TERMINAL'>('INPUT');
+  const [consoleLogs, setConsoleLogs] = useState<string[]>([]);
+  const logsEndRef = useRef<HTMLDivElement>(null);
+
   // EXPORT STATE
   const [exportType, setExportType] = useState<'ALL' | 'SALES' | 'STOCK' | 'CASH' | 'EXPENSES'>('ALL');
+  
+  // DELETE STORE STATE
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletePin, setDeletePin] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -105,6 +99,11 @@ export const Settings: React.FC<SettingsProps> = ({
   // Check if DB is connected
   const isDbConnected = !!db;
 
+  // Scroll to bottom of logs
+  useEffect(() => {
+    logsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [consoleLogs]);
+
   const handleSaveStore = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSettings(formData);
@@ -112,6 +111,13 @@ export const Settings: React.FC<SettingsProps> = ({
     
     setIsStoreSaved(true);
     setTimeout(() => setIsStoreSaved(false), 3000);
+  };
+
+  const handleLanguageChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newLang = e.target.value;
+      const updatedSettings = { ...formData, language: newLang };
+      setFormData(updatedSettings);
+      onUpdateSettings(updatedSettings); // Immediate update
   };
 
   const handleSaveProfile = (e: React.FormEvent) => {
@@ -127,6 +133,15 @@ export const Settings: React.FC<SettingsProps> = ({
 
     setIsProfileSaved(true);
     setTimeout(() => setIsProfileSaved(false), 3000);
+  };
+
+  const handleDeleteStoreConfirm = () => {
+      const success = onDeleteStore(currentUser.name, deletePin);
+      if (!success) {
+          alert(t('login_error')); // Reuse "Incorrect credentials" or similar
+      } else {
+          setShowDeleteConfirm(false);
+      }
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -200,29 +215,6 @@ export const Settings: React.FC<SettingsProps> = ({
       }
   };
 
-  const handleSaveFirebaseConfig = () => {
-    setConfigError(null);
-    if (!firebaseJson.trim()) {
-      setConfigError("Veuillez coller la configuration JSON.");
-      return;
-    }
-    
-    if (!firebaseJson.trim().startsWith('{')) {
-      setConfigError("Format invalide : Le texte doit être un objet JSON complet commençant par '{'.");
-      return;
-    }
-
-    const success = setupFirebase(firebaseJson);
-    if (success) {
-      setIsDbModalOpen(false);
-      if (window.confirm("Configuration enregistrée ! L'application doit redémarrer pour se connecter. Redémarrer maintenant ?")) {
-        window.location.reload();
-      }
-    } else {
-      setConfigError("Configuration invalide. Vérifiez le format JSON et les clés (apiKey, projectId).");
-    }
-  };
-
   // --- LOGO GENERATION LOGIC ---
   const startLogoGeneration = () => {
     if (!formData.name) {
@@ -232,13 +224,51 @@ export const Settings: React.FC<SettingsProps> = ({
     setGeneratedLogoPreview(null);
     setLogoDescription(''); 
     setReferenceImage(undefined);
+    setConsoleMode('INPUT');
+    setConsoleLogs([]);
     setIsLogoGenModalOpen(true);
   };
 
+  const addLog = (msg: string) => {
+      setConsoleLogs(prev => [...prev, `> ${msg}`]);
+  };
+
+  const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
   const performGeneration = async () => {
+    setConsoleMode('TERMINAL');
     setIsGeneratingLogo(true);
+    setGeneratedLogoPreview(null);
+    setConsoleLogs([]); // Reset logs
+
+    addLog("Initialisation du module Gemini 2.5...");
+    await delay(600);
+    addLog(`Contexte Entreprise : "${formData.name}"`);
+    await delay(400);
+    
+    if (referenceImage) {
+        addLog("Analyse de l'image de référence...");
+        await delay(800);
+        addLog("Extraction des styles visuels...");
+    } else {
+        addLog("Aucune référence visuelle. Mode créatif pur.");
+    }
+    
+    await delay(500);
+    addLog(logoDescription ? `Prompt utilisateur : "${logoDescription.substring(0, 30)}..."` : "Génération automatique basée sur le nom...");
+    addLog("Envoi de la requête au moteur neural...");
+
     try {
       const svgCode = await generateStoreLogo(formData.name, logoDescription, referenceImage);
+      
+      addLog("Réponse reçue (Status: 200 OK)");
+      await delay(300);
+      addLog("Vectorisation des formes...");
+      await delay(300);
+      addLog("Optimisation SVG...");
+      await delay(200);
+      addLog("Rendu final terminé.");
+
       if (svgCode) {
         const base64 = btoa(unescape(encodeURIComponent(svgCode)));
         const dataUrl = `data:image/svg+xml;base64,${base64}`;
@@ -246,9 +276,8 @@ export const Settings: React.FC<SettingsProps> = ({
       }
     } catch (e: any) {
       console.error(e);
-      // Show exact error message to help user debug on Android
-      alert(`Impossible de générer le logo.\nErreur: ${e.message || "Vérifiez la connexion internet."}`);
-      setIsLogoGenModalOpen(false);
+      addLog(`ERREUR FATALE : ${e.message || "Echec de connexion"}`);
+      addLog("Processus interrompu.");
     } finally {
       setIsGeneratingLogo(false);
     }
@@ -259,6 +288,11 @@ export const Settings: React.FC<SettingsProps> = ({
       setFormData({...formData, logoUrl: generatedLogoPreview});
     }
     setIsLogoGenModalOpen(false);
+  };
+
+  const cancelGeneration = () => {
+      setIsLogoGenModalOpen(false);
+      setConsoleMode('INPUT');
   };
 
   // --- EXPORT REPORT LOGIC ---
@@ -343,6 +377,7 @@ export const Settings: React.FC<SettingsProps> = ({
         {/* --- TAB 1: USER PROFILE --- */}
         {activeTab === 'PROFILE' && canViewProfile && (
           <div className="xl:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 space-y-6 animate-fade-in">
+            {/* ... Profile Form Content ... */}
             <h3 className="text-lg font-bold mb-4">{t('edit_profile')}</h3>
             <form onSubmit={handleSaveProfile} className="space-y-6">
               <div className="flex items-center space-x-4 mb-6">
@@ -539,60 +574,6 @@ export const Settings: React.FC<SettingsProps> = ({
                    </div>
                 </div>
 
-                {/* SECURITY & ACCESS (RECOVERY KEY) */}
-                <div className="bg-amber-50 dark:bg-amber-900/20 p-4 rounded-xl border border-amber-100 dark:border-amber-800">
-                    <label className="block text-sm font-bold text-amber-900 dark:text-amber-400 mb-3 flex items-center">
-                        <KeyRound className="w-4 h-4 mr-2" />
-                        Sécurité & Accès
-                    </label>
-                    <div className="space-y-2">
-                        <label className="text-xs text-amber-800 dark:text-amber-300 font-medium">Clé de Récupération (Admin)</label>
-                        <div className="flex gap-2">
-                            <div className="flex-1 relative">
-                                <input 
-                                    type={showRecoveryKey ? "text" : "password"} 
-                                    readOnly
-                                    value={formData.recoveryKey || ''}
-                                    placeholder={!formData.recoveryKey ? "Non générée - Cliquez sur Générer" : ""}
-                                    className="w-full px-3 py-2 border border-amber-200 dark:border-amber-700 bg-white dark:bg-slate-800 rounded-lg text-sm text-slate-600 dark:text-slate-300 font-mono"
-                                />
-                                <button
-                                    type="button" 
-                                    onClick={() => setShowRecoveryKey(!showRecoveryKey)}
-                                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                                    disabled={!formData.recoveryKey}
-                                >
-                                    {showRecoveryKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                </button>
-                            </div>
-                            {formData.recoveryKey && (
-                                <button 
-                                    type="button"
-                                    onClick={copyKey}
-                                    className="bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-700 p-2 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-600 text-amber-700 dark:text-amber-400 transition-colors"
-                                    title="Copier"
-                                >
-                                    <Copy className="w-4 h-4" />
-                                </button>
-                            )}
-                            <button 
-                                type="button"
-                                onClick={handleRegenerateKey}
-                                className={`bg-white dark:bg-slate-700 border border-amber-200 dark:border-amber-700 p-2 rounded-lg hover:bg-amber-100 dark:hover:bg-slate-600 transition-colors ${!formData.recoveryKey ? 'w-auto px-4 flex items-center text-xs font-bold' : ''}`}
-                                title={formData.recoveryKey ? "Régénérer" : "Générer Clé"}
-                            >
-                                <RefreshCw className={`w-4 h-4 ${!formData.recoveryKey ? 'mr-2' : ''}`} />
-                                {!formData.recoveryKey ? "Générer" : ""}
-                            </button>
-                        </div>
-                        <p className="text-[10px] text-amber-700 dark:text-amber-500 mt-1">
-                            {formData.recoveryKey 
-                                ? "Cette clé sert à réinitialiser le code PIN admin si nécessaire."
-                                : "Aucune clé de récupération n'est définie. Veuillez en générer une maintenant."}
-                        </p>
-                    </div>
-                </div>
-
                 {/* AI Configuration Status */}
                 <div className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-900/20 dark:to-blue-900/20 p-4 rounded-xl border border-indigo-100 dark:border-indigo-800 flex items-start space-x-4">
                   <div className="bg-white dark:bg-indigo-900 p-2 rounded-lg shadow-sm">
@@ -604,31 +585,6 @@ export const Settings: React.FC<SettingsProps> = ({
                        {t('ai_ready')}
                      </p>
                   </div>
-                </div>
-
-                {/* Update Configuration - ADDED SECTION */}
-                <div className="bg-slate-50 dark:bg-slate-700/50 p-4 rounded-xl border border-slate-200 dark:border-slate-600">
-                    <label className="block text-sm font-bold mb-3 flex items-center justify-between">
-                        <div className="flex items-center">
-                            <Github className="w-4 h-4 mr-2" />
-                            {t('software_update')}
-                        </div>
-                        <span className="text-xs bg-slate-200 dark:bg-slate-600 px-2 py-1 rounded-full font-mono">
-                            v{process.env.PACKAGE_VERSION || '1.0.0'}
-                        </span>
-                    </label>
-                    <div className="flex gap-2">
-                        <input 
-                            type="text" 
-                            value={formData.githubRepo || ''}
-                            onChange={(e) => setFormData({...formData, githubRepo: e.target.value})}
-                            className="flex-1 px-3 py-2 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-800"
-                            placeholder="username/repository"
-                        />
-                    </div>
-                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
-                        Dépôt source pour la vérification automatique des nouvelles versions.
-                    </p>
                 </div>
 
                 <div>
@@ -650,11 +606,11 @@ export const Settings: React.FC<SettingsProps> = ({
                     </select>
                     <select
                       value={formData.language}
-                      onChange={(e) => setFormData({...formData, language: e.target.value})}
+                      onChange={handleLanguageChange}
                       className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-xl bg-slate-50 dark:bg-slate-700"
                     >
-                      {AVAILABLE_LANGUAGES.map(lang => (
-                        <option key={lang.code} value={lang.code}>{lang.label}</option>
+                      {ALL_LANGUAGES.map(lang => (
+                        <option key={lang.code} value={lang.code}>{lang.flag} {lang.label}</option>
                       ))}
                     </select>
                   </div>
@@ -737,13 +693,33 @@ export const Settings: React.FC<SettingsProps> = ({
                 </button>
               </div>
             </form>
+
+            {/* DANGER ZONE */}
+            {isAdmin && (
+                <div className="bg-red-50 dark:bg-red-900/20 p-6 rounded-xl border border-red-100 dark:border-red-800 mt-8">
+                    <h4 className="text-red-700 dark:text-red-400 font-bold text-lg mb-2 flex items-center">
+                        <AlertTriangle className="w-5 h-5 mr-2" /> Zone de Danger
+                    </h4>
+                    <p className="text-sm text-red-600 dark:text-red-300 mb-4">
+                        La suppression de l'entreprise est irréversible. Toutes les données (ventes, stocks, employés) seront définitivement effacées.
+                    </p>
+                    <button 
+                        type="button" 
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg shadow-red-200 transition-colors flex items-center"
+                    >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Supprimer l'entreprise
+                    </button>
+                </div>
+            )}
           </div>
         )}
 
-        {/* ... (Rest of the tabs: Data, Cloud, etc.) ... */}
+        {/* --- TAB 3: DATA & CLOUD --- */}
         {activeTab === 'DATA' && canViewData && (
           <div className="xl:col-span-3 grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
-            {/* Same content as before for DATA tab */}
+            {/* Database Status Card */}
             <div className="lg:col-span-3 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700">
                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-2">
@@ -775,7 +751,6 @@ export const Settings: React.FC<SettingsProps> = ({
                       {currentSettings.cloudProvider === 'GOOGLE_DRIVE' ? t('active') : t('save')}
                     </button>
                  </div>
-                 {/* ... other providers ... */}
               </div>
             </div>
             
@@ -819,61 +794,131 @@ export const Settings: React.FC<SettingsProps> = ({
           </div>
         )}
       </div>
-
-      {/* FIREBASE CONFIG MODAL & LOGO GEN MODAL */}
-      {isDbModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
-           <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in-up">
-              <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-bold">Connexion Firebase</h3><button onClick={() => setIsDbModalOpen(false)}><X className="w-6 h-6" /></button></div>
-              <textarea className="w-full h-48 p-3 border rounded-xl font-mono text-xs" value={firebaseJson} onChange={(e) => setFirebaseJson(e.target.value)}></textarea>
-              <div className="flex justify-end space-x-3 mt-4"><button onClick={handleSaveFirebaseConfig} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold">Connecter</button></div>
-           </div>
-        </div>
-      )}
       
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 z-[70]">
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-sm p-6 border-t-4 border-red-600 animate-fade-in-up">
+                  <div className="text-center">
+                      <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-600">
+                          <AlertTriangle className="w-8 h-8" />
+                      </div>
+                      <h3 className="text-xl font-bold text-slate-800 dark:text-white mb-2">Confirmation Requise</h3>
+                      <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+                          Veuillez saisir votre code PIN administrateur pour confirmer la suppression définitive de l'entreprise.
+                      </p>
+                      
+                      <input 
+                          type="password"
+                          autoFocus
+                          maxLength={4}
+                          value={deletePin}
+                          onChange={(e) => setDeletePin(e.target.value)}
+                          className="w-full px-4 py-3 border border-slate-300 dark:border-slate-600 rounded-xl font-mono text-center text-xl tracking-widest focus:ring-2 focus:ring-red-500/30 text-slate-900 dark:text-white bg-slate-50 dark:bg-slate-700 mb-6"
+                          placeholder="••••"
+                      />
+                      
+                      <div className="flex gap-3">
+                          <button 
+                              onClick={() => { setShowDeleteConfirm(false); setDeletePin(''); }}
+                              className="flex-1 py-3 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                          >
+                              Annuler
+                          </button>
+                          <button 
+                              onClick={handleDeleteStoreConfirm}
+                              disabled={deletePin.length < 4}
+                              className="flex-1 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-colors disabled:opacity-50"
+                          >
+                              Confirmer
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* LOGO GEN MODAL */}
       {isLogoGenModalOpen && (
         <div className="fixed inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
-           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 animate-fade-in-up border-t-4 border-indigo-500">
-              <h3 className="text-lg font-bold text-slate-800 mb-4 text-center">Création de Logo IA</h3>
-              <div className="flex flex-col items-center justify-center py-4 min-h-[200px]">
-                 {isGeneratingLogo ? (<div className="text-center animate-pulse"><p className="text-indigo-700 font-bold">Création...</p></div>) 
-                 : generatedLogoPreview ? (
-                    <div className="flex flex-col items-center w-full">
-                        <img src={generatedLogoPreview} className="w-40 h-40 object-contain mb-6" />
-                        <div className="flex gap-3 w-full">
-                            <button onClick={performGeneration} className="flex-1 py-2 bg-slate-100 rounded">Refaire</button>
-                            <button onClick={confirmGeneratedLogo} className="flex-1 py-2 bg-indigo-600 text-white rounded">Valider</button>
-                        </div>
-                    </div>
-                 )
-                 : (
-                    <div className="w-full">
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Description (Optionnel)</label>
-                       <textarea className="w-full px-3 py-2 border rounded mb-4 h-20 text-sm" value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)} placeholder="Ex: Moderne, minimaliste, bleu..."></textarea>
-                       
-                       <label className="block text-xs font-bold text-slate-500 mb-1">Image de référence (Optionnel)</label>
-                       <div className="flex items-center space-x-2 mb-4">
-                           <button onClick={() => refImgInputRef.current?.click()} className="flex-1 py-2 bg-slate-100 text-slate-600 rounded text-xs font-bold flex items-center justify-center hover:bg-slate-200">
-                               <Upload className="w-3 h-3 mr-2" />
-                               {referenceImage ? "Changer l'image" : "Charger une image"}
-                           </button>
-                           {referenceImage && (
-                               <div className="relative group w-10 h-10 border rounded overflow-hidden">
-                                   <img src={referenceImage} className="w-full h-full object-cover" />
-                                   <button onClick={() => setReferenceImage(undefined)} className="absolute inset-0 bg-red-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                                       <X className="w-4 h-4" />
-                                   </button>
-                               </div>
-                           )}
-                           <input type="file" ref={refImgInputRef} onChange={handleRefImageUpload} accept="image/*" className="hidden" />
-                       </div>
+           <div className={`bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-fade-in-up border-t-4 border-indigo-500 transition-all ${consoleMode === 'TERMINAL' ? 'bg-slate-900 border-none ring-1 ring-slate-700' : ''}`}>
+              {/* ... (Existing Logo Gen Content) ... */}
+              {consoleMode === 'INPUT' ? (
+                  <div className="p-6">
+                      <div className="flex justify-between items-center mb-6">
+                          <h3 className="text-lg font-bold text-slate-800 text-center">Création de Logo IA</h3>
+                          <button onClick={cancelGeneration} className="text-slate-400 hover:text-slate-600"><X className="w-5 h-5"/></button>
+                      </div>
+                      <div className="w-full">
+                         <label className="block text-xs font-bold text-slate-500 mb-1">Description (Optionnel)</label>
+                         <textarea className="w-full px-3 py-2 border border-slate-300 rounded-lg mb-4 h-24 text-sm resize-none focus:ring-2 focus:ring-indigo-500" value={logoDescription} onChange={(e) => setLogoDescription(e.target.value)} placeholder="Ex: Moderne, minimaliste, bleu, symbole de croissance..."></textarea>
+                         
+                         <label className="block text-xs font-bold text-slate-500 mb-1">Image de référence (Optionnel)</label>
+                         <div className="flex items-center space-x-2 mb-6">
+                             <button onClick={() => refImgInputRef.current?.click()} className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold flex items-center justify-center hover:bg-slate-200 border border-slate-200">
+                                 <Upload className="w-3 h-3 mr-2" />
+                                 {referenceImage ? "Changer l'image" : "Charger une image"}
+                             </button>
+                             {referenceImage && (
+                                 <div className="relative group w-12 h-12 border rounded-lg overflow-hidden shrink-0">
+                                     <img src={referenceImage} className="w-full h-full object-cover" />
+                                     <button onClick={() => setReferenceImage(undefined)} className="absolute inset-0 bg-red-500/50 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                                         <X className="w-4 h-4" />
+                                     </button>
+                                 </div>
+                             )}
+                             <input type="file" ref={refImgInputRef} onChange={handleRefImageUpload} accept="image/*" className="hidden" />
+                         </div>
 
-                       <button onClick={performGeneration} className="w-full py-2 bg-indigo-600 text-white rounded font-bold shadow-lg hover:bg-indigo-700 transition-colors">
-                           Générer
-                       </button>
-                    </div>
-                 )}
-              </div>
+                         <button onClick={performGeneration} className="w-full py-3 bg-indigo-600 text-white rounded-xl font-bold shadow-lg hover:bg-indigo-700 transition-colors flex items-center justify-center">
+                             <Play className="w-4 h-4 mr-2 fill-current" /> Lancer la génération
+                         </button>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="flex flex-col h-[500px] bg-slate-950 font-mono text-sm relative">
+                      <div className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-800">
+                          <div className="flex items-center space-x-2 text-slate-400">
+                              <Terminal className="w-4 h-4" />
+                              <span className="text-xs font-bold">GEMINI-AI-CONSOLE</span>
+                          </div>
+                          {!isGeneratingLogo && !generatedLogoPreview && (
+                              <button onClick={cancelGeneration} className="text-red-500 hover:text-red-400"><X className="w-4 h-4"/></button>
+                          )}
+                      </div>
+
+                      <div className="flex-1 p-4 overflow-y-auto custom-scrollbar space-y-1">
+                          {consoleLogs.map((log, idx) => (
+                              <div key={idx} className={`break-words ${log.includes('ERREUR') ? 'text-red-500' : log.includes('Prompt') ? 'text-blue-400' : 'text-emerald-400'}`}>
+                                  {log}
+                              </div>
+                          ))}
+                          {isGeneratingLogo && (
+                              <div className="text-emerald-400 animate-pulse">_</div>
+                          )}
+                          
+                          {generatedLogoPreview && (
+                              <div className="mt-6 border-t border-slate-800 pt-6 flex flex-col items-center animate-fade-in">
+                                  <p className="text-white mb-4 text-center">--- GÉNÉRATION TERMINÉE ---</p>
+                                  <div className="w-48 h-48 bg-white/5 rounded-lg border border-slate-700 p-4 flex items-center justify-center mb-6">
+                                      <img src={generatedLogoPreview} className="w-full h-full object-contain" />
+                                  </div>
+                                  
+                                  <div className="flex gap-3 w-full">
+                                      <button onClick={() => setConsoleMode('INPUT')} className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-lg hover:bg-slate-700 font-bold border border-slate-700 flex items-center justify-center">
+                                          <RotateCcw className="w-4 h-4 mr-2" /> Régénérer
+                                      </button>
+                                      <button onClick={confirmGeneratedLogo} className="flex-1 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-500 font-bold shadow-lg shadow-emerald-900/20 flex items-center justify-center">
+                                          <Check className="w-4 h-4 mr-2" /> Valider
+                                      </button>
+                                  </div>
+                                  <button onClick={cancelGeneration} className="mt-3 text-slate-500 hover:text-slate-400 text-xs underline">Annuler et fermer</button>
+                              </div>
+                          )}
+                          <div ref={logsEndRef} />
+                      </div>
+                  </div>
+              )}
            </div>
         </div>
       )}

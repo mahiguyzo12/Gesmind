@@ -1,7 +1,7 @@
 
-import React from 'react';
-import { ViewState, User, InventoryItem, Transaction, Currency } from '../types';
-import { LayoutDashboard, Package, Sparkles, Settings, ShoppingCart, Users, Wallet, Briefcase, Contact, Truck, LogOut, TrendingDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { ViewState, User, InventoryItem, Transaction, Currency, StoreMetadata } from '../types';
+import { LayoutDashboard, Package, Sparkles, Settings, ShoppingCart, Users, Wallet, Briefcase, Contact, Truck, LogOut, TrendingDown, Store, ChevronDown, PlusCircle, Copy, Check } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { GlobalSearch } from './GlobalSearch';
 import { GesmindLogo } from './GesmindLogo';
@@ -18,6 +18,9 @@ interface HomeMenuProps {
   transactions: Transaction[];
   users: User[];
   currency: Currency;
+  availableStores?: StoreMetadata[];
+  currentStoreId?: string;
+  onSwitchStore?: (storeId: string) => void;
 }
 
 export const HomeMenu: React.FC<HomeMenuProps> = ({ 
@@ -31,10 +34,14 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
   inventory,
   transactions,
   users,
-  currency
+  currency,
+  availableStores = [],
+  currentStoreId,
+  onSwitchStore
 }) => {
-  
+  const [isIdCopied, setIsIdCopied] = useState(false); // État pour le feedback visuel de la copie
   const t = (key: string) => getTranslation(lang, key);
+  const isAdmin = currentUser.role === 'ADMIN';
 
   const allMenuItems = [
     { id: ViewState.DASHBOARD, label: t('menu_dashboard'), description: t('menu_dashboard_desc'), icon: LayoutDashboard, requiredPerm: 'dashboard.view' },
@@ -59,8 +66,16 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
     onLogout();
   };
 
+  const handleCopyStoreId = () => {
+    if (currentStoreId) {
+      navigator.clipboard.writeText(currentStoreId);
+      setIsIdCopied(true);
+      setTimeout(() => setIsIdCopied(false), 2000);
+    }
+  };
+
   return (
-    <div className="h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-between p-4 overflow-hidden transition-colors duration-300">
+    <div className="h-screen bg-slate-50 dark:bg-slate-900 flex flex-col items-center justify-between p-4 overflow-hidden transition-colors duration-300 relative">
       
       {/* Header Compact */}
       <div className="text-center mt-2 mb-2 flex-shrink-0 flex flex-col items-center w-full max-w-xl">
@@ -79,6 +94,22 @@ export const HomeMenu: React.FC<HomeMenuProps> = ({
          )}
          
          <h1 className="text-xl font-bold text-slate-800 dark:text-white leading-tight">{appName}</h1>
+         
+         {/* STORE ID DISPLAY & COPY */}
+         {currentStoreId && (
+            <button
+                onClick={handleCopyStoreId}
+                className="mt-1 mb-2 flex items-center space-x-1.5 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-[10px] text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors cursor-pointer group"
+                title="Copier l'ID pour inviter des collaborateurs"
+            >
+                <span className="font-mono tracking-wide">ID: {currentStoreId}</span>
+                {isIdCopied ? (
+                    <Check className="w-3 h-3 text-emerald-500 animate-fade-in" />
+                ) : (
+                    <Copy className="w-3 h-3 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-200 transition-colors" />
+                )}
+            </button>
+         )}
          
          <div className="mt-1 text-[10px] bg-slate-200 dark:bg-slate-800 px-3 py-0.5 rounded-full text-slate-600 dark:text-slate-300">
             {t('hello')}, <span className="font-bold" style={{color: themeColor}}>{currentUser.name}</span>

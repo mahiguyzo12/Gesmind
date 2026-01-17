@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { InventoryItem, Transaction, TransactionType, TransactionItem, Currency, User, Customer, Supplier, StoreSettings, RegisterStatus } from '../types';
-import { ShoppingCart, TrendingUp, TrendingDown, Plus, Trash2, Search, FileText, CheckCircle, Printer, Filter, User as UserIcon, Truck, Clock, X, ChevronDown, Shield, Eye, Calculator, Lock, Info, Wallet } from 'lucide-react';
+import { InventoryItem, Transaction, TransactionType, TransactionItem, Currency, User, Customer, Supplier, StoreSettings, RegisterStatus, PaymentMethod } from '../types';
+import { ShoppingCart, TrendingUp, TrendingDown, Plus, Trash2, Search, FileText, CheckCircle, Printer, Filter, User as UserIcon, Truck, Clock, X, ChevronDown, Shield, Eye, Calculator, Lock, Info, Wallet, Smartphone, CreditCard, Banknote } from 'lucide-react';
 import { checkTodayClosingStatus } from '../src/services/firestoreService';
 
 interface CommercialProps {
@@ -48,7 +48,8 @@ export const Commercial: React.FC<CommercialProps> = ({
   
   // Payment State
   const [amountPaid, setAmountPaid] = useState<string>(''); 
-  
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH');
+
   // Permissions & Role Check
   const isAdmin = currentUser.role === 'ADMIN';
   const canSale = currentUser.permissions.includes('commercial.sale');
@@ -165,6 +166,7 @@ export const Commercial: React.FC<CommercialProps> = ({
     setSelectedThirdPartyId('');
     setProductSearchTerm('');
     setAmountPaid(''); // Reset payment field to force explicit entry
+    setPaymentMethod('CASH'); // Default
     setQtyInput(0); 
     setIsModalOpen(true);
     setTimeout(() => searchInputRef.current?.focus(), 100);
@@ -299,6 +301,7 @@ export const Commercial: React.FC<CommercialProps> = ({
       amountPaid: paidAmountBase, // Explicitly tracked separate from Total
       paymentStatus: paymentStatus,
       paidAt: paidAtStr,
+      paymentMethod: paymentMethod, // Include payment method
       status: 'COMPLETED',
       sellerId: currentUser.id, 
       sellerName: currentUser.name, 
@@ -356,8 +359,104 @@ export const Commercial: React.FC<CommercialProps> = ({
         </div>
       </header>
 
-      {/* FILTERS & LIST RENDERED HERE (UNCHANGED FROM PREVIOUS VERSION) */}
-      {/* ... keeping the list rendering logic identical ... */}
+      {/* FILTERS */}
+      <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex flex-col md:flex-row gap-4 mb-6">
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+            <Filter className="w-4 h-4 text-slate-400" />
+            <span className="text-xs font-bold text-slate-500 uppercase mr-2">Type</span>
+            <button onClick={() => setListFilterType('ALL')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterType === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>TOUT</button>
+            <button onClick={() => setListFilterType('SALE')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterType === 'SALE' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>VENTES</button>
+            <button onClick={() => setListFilterType('PURCHASE')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterType === 'PURCHASE' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>ACHATS</button>
+        </div>
+        <div className="w-px bg-slate-200 hidden md:block"></div>
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0">
+            <span className="text-xs font-bold text-slate-500 uppercase mr-2">Statut</span>
+            <button onClick={() => setListFilterStatus('ALL')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterStatus === 'ALL' ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>TOUT</button>
+            <button onClick={() => setListFilterStatus('PAID')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterStatus === 'PAID' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>PAYÉ</button>
+            <button onClick={() => setListFilterStatus('UNPAID')} className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-colors ${listFilterStatus === 'UNPAID' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>NON PAYÉ</button>
+        </div>
+      </div>
+
+      {/* LIST */}
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left min-w-[800px]">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-24">Type</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-40">Date</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider min-w-[200px]">Détails</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-32">Vendeur</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right w-32">Total</th>
+                <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center w-24">Statut</th>
+                <th className="px-6 py-4 w-12"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {filteredTransactions.map((tx) => (
+                <tr key={tx.id} className="hover:bg-slate-50 transition-colors group">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${tx.type === 'SALE' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {tx.type === 'SALE' ? <TrendingUp className="w-3 h-3 mr-1" /> : <TrendingDown className="w-3 h-3 mr-1" />}
+                      {tx.type === 'SALE' ? 'Vente' : 'Achat'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-500 font-mono whitespace-nowrap">
+                    {new Date(tx.date).toLocaleDateString()} <span className="text-xs text-slate-400">{new Date(tx.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                        <span className="text-sm font-bold text-slate-800 mb-1">{tx.customerName || tx.supplierName || 'Client de passage'}</span>
+                        <div className="flex flex-wrap gap-1">
+                            {tx.items.slice(0, 2).map((item, idx) => (
+                                <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-600 border border-slate-200">
+                                    {item.quantity}x {item.productName}
+                                </span>
+                            ))}
+                            {tx.items.length > 2 && <span className="text-[10px] text-slate-400">+{tx.items.length - 2} autres</span>}
+                        </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-600">
+                    <div className="flex items-center">
+                        <UserIcon className="w-3 h-3 mr-1.5 text-slate-400" />
+                        {tx.sellerName.split(' ')[0]}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="font-bold text-slate-800">{formatCurrency(tx.totalAmount)}</div>
+                    {tx.paymentStatus !== 'PAID' && (
+                        <div className="text-xs text-red-500 font-medium mt-0.5">Reste: {formatCurrency(tx.totalAmount - tx.amountPaid)}</div>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                    {tx.paymentStatus === 'PAID' ? (
+                        <span className="inline-flex items-center justify-center w-6 h-6 bg-emerald-100 rounded-full text-emerald-600" title="Payé"><CheckCircle className="w-4 h-4" /></span>
+                    ) : tx.paymentStatus === 'PARTIAL' ? (
+                        <span className="inline-flex px-2 py-1 rounded bg-amber-100 text-amber-700 text-[10px] font-bold">PARTIEL</span>
+                    ) : (
+                        <span className="inline-flex px-2 py-1 rounded bg-red-100 text-red-700 text-[10px] font-bold">IMPAYÉ</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 text-center">
+                     <button onClick={() => handlePrintInvoice(tx)} className="text-slate-400 hover:text-indigo-600 transition-colors p-2 hover:bg-slate-100 rounded-full">
+                         <Printer className="w-4 h-4" />
+                     </button>
+                  </td>
+                </tr>
+              ))}
+              {filteredTransactions.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 bg-slate-50/50">
+                    <FileText className="w-12 h-12 mx-auto mb-3 opacity-20" />
+                    <p>Aucune transaction trouvée.</p>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
       
       {/* NEW TRANSACTION MODAL - FINANCIAL LOGIC UPDATE */}
       {isModalOpen && (
@@ -388,7 +487,7 @@ export const Commercial: React.FC<CommercialProps> = ({
                 </div>
             )}
 
-            {/* BODY (Inputs & Table) - Same as before */}
+            {/* BODY (Inputs & Table) */}
             <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/30">
                 {/* Inputs Row */}
                 <div className="bg-white p-2 border-b border-slate-200 shrink-0 shadow-sm z-20">
@@ -408,7 +507,7 @@ export const Commercial: React.FC<CommercialProps> = ({
                             </select>
                         </div>
 
-                        {/* Search & Add Logic (Identical) */}
+                        {/* Search & Add Logic */}
                         <div className="flex-1 flex gap-1 relative" ref={productDropdownRef}>
                             <div className="relative flex-1">
                                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 w-3 h-3" />
@@ -470,10 +569,10 @@ export const Commercial: React.FC<CommercialProps> = ({
                     </div>
                 </div>
 
-                {/* Table Logic (Identical) */}
+                {/* Table Logic */}
                 <div className="flex-1 overflow-auto bg-white p-0">
                     <table className="w-full text-left border-collapse">
-                        <thead className="bg-slate-100 text-slate-500 sticky top-0 z-10 shadow-sm text-[10px] uppercase font-bold">
+                        <thead className="bg-slate-100 text-slate-50 sticky top-0 z-10 shadow-sm text-[10px] uppercase font-bold">
                             <tr>
                                 <th className="px-3 py-2">Produit</th>
                                 <th className="px-3 py-2 text-center">Qté</th>
@@ -529,11 +628,28 @@ export const Commercial: React.FC<CommercialProps> = ({
 
                     {/* Right: Payment Input (Treasury Impact) */}
                     <div className="flex items-center gap-2 w-full md:w-auto bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                        
+                        {/* PAYMENT METHOD SELECTOR */}
+                        <div className="flex flex-col items-start px-2 border-r border-slate-100">
+                            <label className="text-[9px] font-bold text-slate-400 uppercase">Mode</label>
+                            <select
+                                className="h-6 text-sm font-bold text-slate-800 bg-transparent outline-none border-none p-0 cursor-pointer w-24"
+                                value={paymentMethod}
+                                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                            >
+                                <option value="CASH">Espèces</option>
+                                <option value="MOBILE_MONEY">Mobile Money</option>
+                                <option value="CARD">Carte Bancaire</option>
+                                <option value="CHECK">Chèque</option>
+                                <option value="OTHER">Autre</option>
+                            </select>
+                        </div>
+
                         <div className="flex items-center gap-2 px-2 border-r border-slate-100 pr-3">
                             <div className="flex flex-col items-end">
                                 <label className="text-[9px] font-bold text-slate-400 uppercase flex items-center">
                                     <Wallet className="w-3 h-3 mr-1 text-slate-400" />
-                                    {modalMode === 'PURCHASE' ? 'Règlement (Caisse)' : 'Versement'}
+                                    {modalMode === 'PURCHASE' ? 'Règlement' : 'Versement'}
                                 </label>
                                 <div className="relative w-28">
                                     <input 
@@ -572,7 +688,7 @@ export const Commercial: React.FC<CommercialProps> = ({
         </div>
       )}
 
-      {/* --- REGISTER LOCKED MODAL (UPDATED TEXT) --- */}
+      {/* --- REGISTER LOCKED MODAL --- */}
       {isLockModalOpen && (
           <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
               <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center animate-fade-in-up border-b-4 border-red-600 relative">

@@ -67,10 +67,15 @@ export interface StoreSettings {
   themeColor?: string; 
 }
 
+export interface AISuggestion {
+  message: string;
+  module: string;
+}
+
 export interface AIAnalysisResult {
   summary: string;
   alerts: string[];
-  suggestions: string[];
+  suggestions: AISuggestion[];
 }
 
 export interface GeneratedItemData {
@@ -148,6 +153,7 @@ export interface User {
   name: string; 
   role: UserRole;
   pin: string; 
+  authUid?: string; // LIEN FIREBASE AUTH
   avatar?: string;
   email?: string; 
   phone?: string; 
