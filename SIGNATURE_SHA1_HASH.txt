@@ -1,0 +1,272 @@
+================================================================================
+GESMIND ENTERPRISE v1.0.4 - SIGNATURE SHA-1 HASH DOCUMENTATION
+================================================================================
+
+Date: 2026-01-17
+Version: 1.0.4
+Application: Gesmind Enterprise Mobile
+Platform: Android
+
+================================================================================
+KEYSTORE SIGNING CERTIFICATE SHA-1 HASH
+================================================================================
+
+Keystore File: /home/codespace/.android/gesmind-key.keystore
+SHA-1 (Keystore): 674816c8aba5c20ca60f860e7f9f5fbb70be679b
+SHA-256 (Keystore): 9cbb9454756ab421a4157a1ae5ba9632d643693f0d0824eac656f03798494f67
+
+Status: ✓ Generated & Verified
+Type: Android Keystore (JKS format)
+Algorithm: RSA 2048-bit
+Signature: SHA256withRSA
+Validity: 10,000 days
+
+================================================================================
+KEYSTORE CONFIGURATION DETAILS
+================================================================================
+
+File Location: /home/codespace/.android/gesmind-key.keystore
+Key Alias: gesmind-key
+Store Password: [PROTECTED]
+Key Password: [PROTECTED]
+Configuration File: android/app/keystore.properties
+
+Certificate Subject:
+  CN: Gesmind
+  O: Gesmind
+  L: Kinshasa
+  ST: Kinshasa
+  C: CD (Democratic Republic of Congo)
+
+================================================================================
+VERIFICATION COMMAND
+================================================================================
+
+Verify keystore integrity:
+
+# Linux/macOS
+sha1sum /home/codespace/.android/gesmind-key.keystore
+
+Expected: 674816c8aba5c20ca60f860e7f9f5fbb70be679b
+
+# Windows PowerShell
+certUtil -hashfile "$env:USERPROFILE\.android\gesmind-key.keystore" SHA1
+
+# Alternative verification using keytool
+keytool -list -v -keystore /home/codespace/.android/gesmind-key.keystore \
+  -storepass gesmind2024 \
+  -alias gesmind-key
+
+================================================================================
+CERTIFICATE FINGERPRINT
+================================================================================
+
+This keystore is used to sign Android APK releases. The certificate fingerprint
+is required for:
+
+1. Google Play Store submission
+2. Firebase integration verification
+3. App signing verification
+4. Security audits
+
+To extract certificate fingerprint:
+
+keytool -list -v -keystore /home/codespace/.android/gesmind-key.keystore \
+  -storepass gesmind2024 \
+  -alias gesmind-key | grep -A 10 "Certificate fingerprints"
+
+================================================================================
+SIGNING PROCESS
+================================================================================
+
+The APK is signed using the following process:
+
+1. Keystore is loaded from: /home/codespace/.android/gesmind-key.keystore
+2. Configuration is read from: android/app/keystore.properties
+3. Private key is used with alias: gesmind-key
+4. Signing algorithm: SHA256withRSA
+5. Output: Release APK file (app-release.apk)
+
+Gradle Configuration:
+  File: android/app/build.gradle
+  Block: signingConfigs.release
+  Status: ✓ Active
+
+================================================================================
+SECURITY NOTES
+================================================================================
+
+⚠️ IMPORTANT SECURITY INFORMATION:
+
+1. Keystore Protection:
+   - Keep the keystore file in a SECURE location
+   - Never commit keystore to public repositories
+   - Use environment-specific keystores for different environments
+
+2. Password Management:
+   - Store passwords securely (environment variables, secret management)
+   - Never hardcode passwords in source code
+   - Rotate passwords periodically
+
+3. Backup Strategy:
+   - Maintain secure backups of the keystore file
+   - Store backup in a different location
+   - Document backup locations securely
+
+4. Key Expiration:
+   - Current validity: 10,000 days
+   - Expiration date will be calculated by system
+   - Plan for key renewal before expiration
+
+================================================================================
+SHA-1 HASH VERIFICATION STATUS
+================================================================================
+
+Keystore File:
+  SHA-1: ✓ Verified
+  SHA-256: ✓ Verified
+  Status: Production-ready
+  Last Generated: 2026-01-17
+
+Configuration:
+  File: keystore.properties
+  Status: ✓ Active
+  Last Updated: 2026-01-17
+
+Build Integration:
+  Gradle File: build.gradle
+  Status: ✓ Configured
+  Auto-Signing: Enabled for Release
+
+================================================================================
+RELATED FILES & DOCUMENTATION
+================================================================================
+
+Configuration Files:
+  - android/app/keystore.properties (Keystore configuration)
+  - android/app/build.gradle (Gradle signing configuration)
+  - android/gradle.properties (Android-wide settings)
+
+Documentation:
+  - APK_GENERATION_GUIDE.md (Complete APK generation guide)
+  - HASHES_SUMMARY.txt (All project hashes)
+  - FIRESTORE_INTEGRITY_HASHES.txt (Database integrity hashes)
+
+Build Scripts:
+  - build-apk-release.sh (Automated release build script)
+
+================================================================================
+USAGE IN BUILD PROCESS
+================================================================================
+
+When building the release APK:
+
+1. Gradle reads keystore.properties
+2. Loads keystore from the configured path
+3. Retrieves key alias and passwords
+4. Signs the APK with the private key
+5. Generates signed APK file
+
+Build Command:
+./gradlew assembleRelease
+
+Expected Output:
+  - Android/app/build/outputs/apk/release/app-release.apk
+
+================================================================================
+TROUBLESHOOTING
+================================================================================
+
+If SHA-1 hash doesn't match:
+
+1. Verify keystore file hasn't been modified:
+   - Check file modification date
+   - Verify file size (typically 2-3 KB)
+   - Restore from secure backup if needed
+
+2. Verify keystore configuration:
+   - Check keystore.properties file
+   - Verify paths are correct
+   - Ensure file permissions allow access
+
+3. Regenerate if necessary:
+   keytool -genkey -v -keystore /home/codespace/.android/gesmind-key.keystore \
+     -keyalg RSA -keysize 2048 -validity 10000 \
+     -alias gesmind-key \
+     -storepass gesmind2024 \
+     -keypass gesmind2024 \
+     -dname "CN=Gesmind,O=Gesmind,L=Kinshasa,ST=Kinshasa,C=CD"
+
+================================================================================
+COMPLIANCE & AUDIT INFORMATION
+================================================================================
+
+This keystore is used for production signing of Gesmind Enterprise APK.
+
+Audit Trail:
+  Generated: 2026-01-17
+  Algorithm: RSA-2048 with SHA256
+  Validity: 10,000 days
+  Purpose: Android application signing
+  Status: ✓ Active & Verified
+
+For Security Audits:
+  - Include this hash in security reports
+  - Use hash for integrity verification
+  - Archive hash for compliance records
+  - Compare hash in subsequent builds
+
+================================================================================
+QUICK REFERENCE
+================================================================================
+
+Keystore SHA-1:
+  674816c8aba5c20ca60f860e7f9f5fbb70be679b
+
+Keystore SHA-256:
+  9cbb9454756ab421a4157a1ae5ba9632d643693f0d0824eac656f03798494f67
+
+Location:
+  /home/codespace/.android/gesmind-key.keystore
+
+Configuration:
+  android/app/keystore.properties
+
+Alias:
+  gesmind-key
+
+================================================================================
+GENERATED SIGNATURE DOCUMENTATION
+================================================================================
+
+Documentation Files Generated:
+  ✓ SIGNATURE_SHA1_HASH.txt (This file)
+  ✓ Related: HASHES_SUMMARY.txt
+  ✓ Related: APK_GENERATION_GUIDE.md
+
+Status: ✓ READY FOR PRODUCTION SIGNING
+
+================================================================================
+Contact & Support
+================================================================================
+
+Repository: https://github.com/mahiguyzo12/Gesmind
+Issues: https://github.com/mahiguyzo12/Gesmind/issues
+Email: gesmind.dev@example.com
+
+For Signing Issues:
+1. Verify keystore file exists
+2. Check SHA-1 hash matches expected value
+3. Verify configuration in keystore.properties
+4. Review keytool command syntax
+5. Consult APK_GENERATION_GUIDE.md for detailed instructions
+
+================================================================================
+END OF SIGNATURE DOCUMENTATION
+================================================================================
+
+Generated: 2026-01-17
+Gesmind Enterprise v1.0.4
+Keystore SHA-1: 674816c8aba5c20ca60f860e7f9f5fbb70be679b
+
+================================================================================

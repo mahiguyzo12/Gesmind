@@ -1,11 +1,11 @@
 
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { InventoryItem, GeneratedItemData, Currency } from "../types";
 
-// Initialisation avec la nouvelle librairie @google/genai
+// Initialisation avec la nouvelle librairie @google/generative-ai
 // La clé est définie dans vite.config.ts (process.env.API_KEY)
 const API_KEY = process.env.API_KEY || "";
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+const ai = new GoogleGenerativeAI(API_KEY);
 
 /**
  * Analyzes the current inventory to provide insights, alerts, and suggestions.
@@ -43,14 +43,12 @@ export const analyzeStock = async (inventory: InventoryItem[], currency: Currenc
         Données: ${inventorySummary}
       `;
 
-    // Utilisation de la nouvelle syntaxe ai.models.generateContent avec le modèle gemini-2.5-flash
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    // Utilisation de la nouvelle syntaxe avec getGenerativeModel
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const response = await model.generateContent(prompt);
 
-    // Accès direct à la propriété .text (pas une fonction dans le nouveau SDK)
-    const text = response.text || "";
+    // Accès au contenu de la réponse
+    const text = response.response.text() || "";
     
     // Nettoyage au cas où le modèle renvoie quand même du markdown
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -84,12 +82,10 @@ export const generateItemDetails = async (itemName: string): Promise<GeneratedIt
       Note: suggestedPrice doit être un nombre en EUROS.
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: prompt,
-    });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const response = await model.generateContent(prompt);
 
-    const text = response.text || "";
+    const text = response.response.text() || "";
     const cleanJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
     return JSON.parse(cleanJson);
@@ -141,12 +137,10 @@ export const generateStoreLogo = async (storeName: string, description?: string,
         contentParts.push({ inlineData: { mimeType: mimeType, data: base64Data } });
     }
 
-    const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [{ role: 'user', parts: contentParts }],
-    });
+    const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const response = await model.generateContent(contentParts);
 
-    let svgText = response.text || "";
+    let svgText = response.response.text() || "";
 
     // Nettoyage robuste pour extraire uniquement le bloc <svg>...</svg>
     const svgStart = svgText.indexOf('<svg');

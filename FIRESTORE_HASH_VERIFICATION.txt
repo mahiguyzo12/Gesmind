@@ -1,0 +1,28 @@
+================================================================================
+GESMIND ENTERPRISE v1.0.4 - FIRESTORE HASH VERIFICATION
+================================================================================
+
+SHA-1 HASHES (File Integrity Check)
+================================================================================
+
+Firestore Service:
+5b2fdc7bd4615217e4b045d590a775ad3147c845  src/services/firestoreService.ts
+
+Firebase Config:
+0349779cf9a8acfb1a5f3536e6570b6aecf799c5  src/firebaseConfig.ts
+
+Firestore Rules:
+167d9824f9538656412f729a886515ac9b8a8960  firestore.rules
+
+Package.json:
+bbb621baed1c1800bfd2ba16356d61a94be5c045  package.json
+
+================================================================================
+GIT COMMIT SHA-1
+================================================================================
+
+Commit: 997a7e232c17fa6e9ab3371cf2ea36884fc1409f
+Repository: https://github.com/mahiguyzo12/Gesmind.git
+Branch: main
+
+================================================================================

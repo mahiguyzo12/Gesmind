@@ -2,7 +2,7 @@
 {
   "name": "gesmind-enterprise",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.0.4",
   "description": "Application Mobile de gestion de stocks assistée par IA",
   "author": "Gesmind Team",
   "homepage": "https://mahiguyzo12.github.io/Gesmind/",

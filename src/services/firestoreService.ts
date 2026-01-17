@@ -168,6 +168,7 @@ const subscribeToLocalCollection = (storeId: string, collectionName: string, cal
 export const subscribeToInventory = (storeId: string, callback: (data: InventoryItem[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'inventory', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "inventory"), orderBy("name"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as InventoryItem)));
@@ -179,6 +180,7 @@ export const subscribeToInventory = (storeId: string, callback: (data: Inventory
 export const subscribeToTransactions = (storeId: string, callback: (data: Transaction[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'transactions', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "transactions"), orderBy("date", "desc"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Transaction)));
@@ -189,6 +191,7 @@ export const subscribeToTransactions = (storeId: string, callback: (data: Transa
 export const subscribeToExpenses = (storeId: string, callback: (data: Expense[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'expenses', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "expenses"), orderBy("date", "desc"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Expense)));
@@ -199,6 +202,7 @@ export const subscribeToExpenses = (storeId: string, callback: (data: Expense[])
 export const subscribeToUsers = (storeId: string, callback: (data: User[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'users', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "users"), orderBy("name"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as User)));
@@ -209,6 +213,7 @@ export const subscribeToUsers = (storeId: string, callback: (data: User[]) => vo
 export const subscribeToEmployees = (storeId: string, callback: (data: Employee[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'employees', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "employees"), orderBy("fullName"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Employee)));
@@ -219,6 +224,7 @@ export const subscribeToEmployees = (storeId: string, callback: (data: Employee[
 export const subscribeToCustomers = (storeId: string, callback: (data: Customer[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'customers', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "customers"), orderBy("name"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Customer)));
@@ -229,6 +235,7 @@ export const subscribeToCustomers = (storeId: string, callback: (data: Customer[
 export const subscribeToSuppliers = (storeId: string, callback: (data: Supplier[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'suppliers', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "suppliers"), orderBy("name"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as Supplier)));
@@ -239,6 +246,7 @@ export const subscribeToSuppliers = (storeId: string, callback: (data: Supplier[
 export const subscribeToCashMovements = (storeId: string, callback: (data: CashMovement[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'cash_movements', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "cash_movements"), orderBy("date", "desc"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashMovement)));
@@ -250,6 +258,7 @@ export const subscribeToCashMovements = (storeId: string, callback: (data: CashM
 export const subscribeToCashClosings = (storeId: string, callback: (data: CashClosing[]) => void) => {
   if (!db) return subscribeToLocalCollection(storeId, 'cashClosings', callback);
   return authGuard(() => {
+      if (!db) return () => {};
       const q = query(collection(db, "stores", storeId, "cashClosings"), orderBy("date", "desc"));
       return onSnapshot(q, (snapshot) => {
         callback(snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as CashClosing)));
@@ -270,6 +279,7 @@ export const subscribeToSettings = (storeId: string, callback: (data: StoreSetti
       return () => { localListeners[key] = localListeners[key].filter(cb => cb !== update); };
   }
   return authGuard(() => {
+      if (!db) return () => {};
       return onSnapshot(doc(db, "stores", storeId), (docSnap) => {
         if (docSnap.exists()) {
           callback(docSnap.data().settings as StoreSettings);
@@ -404,6 +414,7 @@ export const performCashClosing = async (
 
     try {
         await ensureAuthReady();
+        if (!db) throw new Error("Firestore non initializado");
         const batch = writeBatch(db);
 
         // 1. Création de la clôture (ID idempotent)
@@ -413,8 +424,10 @@ export const performCashClosing = async (
         // 2. Verrouillage des ventes (Max 500 ops in batch, chunking needed for production scale)
         // Note: For typical daily volume per register, 500 limit is okay for MVP.
         transactionsToLock.forEach(txId => {
-            const txRef = doc(db, "stores", storeId, "transactions", txId);
-            batch.update(txRef, { isLocked: true });
+            if (db) {
+                const txRef = doc(db, "stores", storeId, "transactions", txId);
+                batch.update(txRef, { isLocked: true });
+            }
         });
 
         await batch.commit();
@@ -484,6 +497,7 @@ export const processForgottenClosings = async (
             const closureId = `${dateKey}_${registerId}`; // ID Unique Idempotent
 
             // Vérifier si une clôture existe déjà (cas rare d'incohérence)
+            if (!db) break; // Sortir si db n'est pas disponible
             const closingRef = doc(db, "stores", storeId, "cashClosings", closureId);
             const closingSnap = await getDoc(closingRef);
 
@@ -532,7 +546,9 @@ export const processForgottenClosings = async (
 
             // Verrouillage des ventes
             dayTxs.forEach(tx => {
-                batch.update(doc(db, "stores", storeId, "transactions", tx.id), { isLocked: true });
+                if (db) {
+                    batch.update(doc(db, "stores", storeId, "transactions", tx.id), { isLocked: true });
+                }
             });
 
             await batch.commit();
