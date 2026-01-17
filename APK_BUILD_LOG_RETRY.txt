@@ -1,0 +1,86 @@
+[0;34m
+╔════════════════════════════════════════════════════════════╗
+║   GESMIND Enterprise v1.0.4 - APK Release Build Script    ║
+╚════════════════════════════════════════════════════════════╝
+[0m
+
+[0;34mStep 1: Building Web Assets...[0m
+
+> gesmind-enterprise@1.0.4 build
+> tsc && vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+vite v5.4.21 building for production...
+
+/index.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+transforming...
+✓ 2311 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/assets/manifest-BZ59NsN1.json    0.32 kB │ gzip:   0.22 kB
+dist/assets/logo-zdQMajaK.svg         3.23 kB │ gzip:   1.03 kB
+dist/index.html                       3.38 kB │ gzip:   1.28 kB
+dist/assets/vendor-M-YxhjWr.js      605.90 kB │ gzip: 167.55 kB
+dist/assets/index-DEQIE8Ti.js       822.75 kB │ gzip: 197.31 kB
+✓ built in 6.23s
+[0;32m✓ Web build completed[0m
+
+[0;34mStep 2: Syncing Capacitor...[0m
+[warn] The bundledWebRuntime configuration option has been deprecated. Can be safely deleted.
+✔ Copying web assets from dist to android/app/src/main/assets/public in 27.43ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 742.85μs
+✔ copy android in 52.25ms
+✔ Updating Android plugins in 4.81ms
+✔ update android in 63.95ms
+[info] Sync finished in 0.118s
+[0;32m✓ Capacitor sync completed[0m
+
+[0;34mStep 3: Building APK Release...[0m
+Running: ./gradlew assembleRelease
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:mergeReleaseJniLibFolders UP-TO-DATE
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-android:copyReleaseJniLibsProjectAndLocalJars UP-TO-DATE
+> Task :capacitor-android:generateReleaseResValues UP-TO-DATE
+> Task :capacitor-android:extractDeepLinksForAarRelease UP-TO-DATE
+> Task :capacitor-android:generateReleaseResources UP-TO-DATE
+> Task :capacitor-android:packageReleaseResources UP-TO-DATE
+> Task :capacitor-android:parseReleaseLocalResources UP-TO-DATE
+> Task :capacitor-android:processReleaseManifest UP-TO-DATE
+> Task :capacitor-android:generateReleaseRFile UP-TO-DATE
+> Task :capacitor-android:extractReleaseAnnotations UP-TO-DATE
+> Task :capacitor-android:javaPreCompileRelease UP-TO-DATE
+> Task :capacitor-android:compileReleaseJavaWithJavac FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':capacitor-android:compileReleaseJavaWithJavac'.
+> Could not resolve all files for configuration ':capacitor-android:androidJdkImage'.
+   > Failed to transform core-for-system-modules.jar to match attributes {artifactType=_internal_android_jdk_image, org.gradle.libraryelements=jar, org.gradle.usage=java-runtime}.
+      > Execution failed for JdkImageTransform: /home/codespace/android-sdk/platforms/android-33/core-for-system-modules.jar.
+         > Error while executing process /usr/local/sdkman/candidates/java/21.0.9-ms/bin/jlink with arguments {--module-path /home/codespace/.gradle/caches/8.10/transforms/77e8ffa9e7d971f80c1705aa426fb607-4b7dc95f-74fc-4ae6-afc0-a7956a83a2d8/transformed/output/temp/jmod --add-modules java.base --output /home/codespace/.gradle/caches/8.10/transforms/77e8ffa9e7d971f80c1705aa426fb607-4b7dc95f-74fc-4ae6-afc0-a7956a83a2d8/transformed/output/jdkImage --disable-plugin system-modules}
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.10/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 5s
+11 actionable tasks: 1 executed, 10 up-to-date

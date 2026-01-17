@@ -1,0 +1,191 @@
+[0;34m
+╔════════════════════════════════════════════════════════════╗
+║   GESMIND Enterprise v1.0.4 - APK Release Build Script    ║
+╚════════════════════════════════════════════════════════════╝
+[0m
+
+[0;34mStep 1: Building Web Assets...[0m
+
+> gesmind-enterprise@1.0.4 build
+> tsc && vite build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+vite v5.4.21 building for production...
+
+/index.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
+transforming...
+✓ 2311 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/assets/manifest-BZ59NsN1.json    0.32 kB │ gzip:   0.22 kB
+dist/assets/logo-zdQMajaK.svg         3.23 kB │ gzip:   1.03 kB
+dist/index.html                       3.38 kB │ gzip:   1.28 kB
+dist/assets/vendor-M-YxhjWr.js      605.90 kB │ gzip: 167.55 kB
+dist/assets/index-DEQIE8Ti.js       822.75 kB │ gzip: 197.31 kB
+✓ built in 6.38s
+[0;32m✓ Web build completed[0m
+
+[0;34mStep 2: Syncing Capacitor...[0m
+[warn] The bundledWebRuntime configuration option has been deprecated. Can be safely deleted.
+✔ Copying web assets from dist to android/app/src/main/assets/public in 14.94ms
+✔ Creating capacitor.config.json in android/app/src/main/assets in 926.22μs
+✔ copy android in 49.81ms
+✔ Updating Android plugins in 2.30ms
+✔ update android in 118.69ms
+[info] Sync finished in 0.171s
+[0;32m✓ Capacitor sync completed[0m
+
+[0;34mStep 3: Building APK Release...[0m
+Running: ./gradlew assembleRelease
+Starting a Gradle Daemon, 2 incompatible Daemons could not be reused, use --status for details
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :capacitor-android:mergeReleaseJniLibFolders
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-android:generateReleaseResValues
+> Task :capacitor-android:extractDeepLinksForAarRelease
+> Task :capacitor-android:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-android:generateReleaseResources
+> Task :capacitor-android:packageReleaseResources
+> Task :capacitor-android:parseReleaseLocalResources
+> Task :capacitor-android:javaPreCompileRelease
+> Task :capacitor-android:mergeReleaseShaders
+> Task :capacitor-android:compileReleaseShaders NO-SOURCE
+> Task :capacitor-android:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-android:packageReleaseAssets
+> Task :capacitor-android:processReleaseManifest
+> Task :capacitor-android:prepareLintJarForPublish
+> Task :capacitor-android:prepareReleaseArtProfile
+> Task :capacitor-android:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-android:generateReleaseRFile
+> Task :capacitor-android:mergeReleaseJavaResource
+> Task :capacitor-android:extractReleaseAnnotations
+
+> Task :capacitor-android:compileReleaseJavaWithJavac
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capacitor-android:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-android:mergeReleaseConsumerProguardFiles
+> Task :capacitor-android:syncReleaseLibJars
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders
+> Task :capacitor-android:writeReleaseAarMetadata
+> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:bundleReleaseLocalLintAar
+> Task :capacitor-cordova-android-plugins:stripReleaseDebugSymbols NO-SOURCE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectAndLocalJars
+> Task :capacitor-cordova-android-plugins:generateReleaseResValues
+> Task :capacitor-cordova-android-plugins:extractDeepLinksForAarRelease
+> Task :capacitor-cordova-android-plugins:generateReleaseResources
+> Task :capacitor-cordova-android-plugins:packageReleaseResources
+> Task :capacitor-cordova-android-plugins:processReleaseManifest
+> Task :capacitor-cordova-android-plugins:parseReleaseLocalResources
+> Task :capacitor-cordova-android-plugins:javaPreCompileRelease
+> Task :capacitor-cordova-android-plugins:mergeReleaseShaders
+> Task :capacitor-cordova-android-plugins:compileReleaseShaders NO-SOURCE
+> Task :capacitor-cordova-android-plugins:generateReleaseAssets UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:packageReleaseAssets
+> Task :capacitor-cordova-android-plugins:extractReleaseAnnotations
+> Task :capacitor-cordova-android-plugins:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-cordova-android-plugins:mergeReleaseGeneratedProguardFiles
+> Task :capacitor-cordova-android-plugins:mergeReleaseConsumerProguardFiles
+> Task :capacitor-cordova-android-plugins:prepareLintJarForPublish
+> Task :capacitor-cordova-android-plugins:prepareReleaseArtProfile
+> Task :capacitor-cordova-android-plugins:processReleaseJavaRes NO-SOURCE
+> Task :capacitor-cordova-android-plugins:writeReleaseAarMetadata
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseJavaResource
+> Task :app:javaPreCompileRelease
+> Task :capacitor-cordova-android-plugins:syncReleaseLibJars
+> Task :capacitor-cordova-android-plugins:bundleReleaseLocalLintAar
+> Task :app:generateReleaseResValues
+> Task :app:checkReleaseAarMetadata
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:parseReleaseLocalResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :capacitor-android:extractDeepLinksRelease
+> Task :capacitor-cordova-android-plugins:extractDeepLinksRelease
+> Task :app:processReleaseMainManifest
+> Task :app:processReleaseManifest
+> Task :app:processReleaseManifestForPackage
+> Task :capacitor-android:compileReleaseLibraryResources
+> Task :capacitor-cordova-android-plugins:compileReleaseLibraryResources
+> Task :app:mergeReleaseResources
+> Task :capacitor-android:bundleLibCompileToJarRelease
+> Task :capacitor-cordova-android-plugins:bundleLibCompileToJarRelease
+> Task :app:extractProguardFiles
+> Task :capacitor-android:bundleLibResRelease NO-SOURCE
+> Task :capacitor-android:bundleLibRuntimeToJarRelease
+> Task :capacitor-android:createFullJarRelease
+> Task :capacitor-android:writeReleaseLintModelMetadata
+> Task :capacitor-cordova-android-plugins:bundleLibResRelease NO-SOURCE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToJarRelease
+> Task :capacitor-cordova-android-plugins:createFullJarRelease
+> Task :capacitor-cordova-android-plugins:writeReleaseLintModelMetadata
+> Task :app:mergeReleaseJniLibFolders
+> Task :capacitor-android:copyReleaseJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly
+> Task :app:mergeReleaseNativeLibs NO-SOURCE
+> Task :app:stripReleaseDebugSymbols NO-SOURCE
+> Task :app:extractReleaseNativeSymbolTables NO-SOURCE
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :app:processReleaseResources
+> Task :app:compileReleaseJavaWithJavac
+> Task :app:checkReleaseDuplicateClasses
+> Task :app:dexBuilderRelease
+> Task :app:desugarReleaseFileDependencies
+The message received from the daemon indicates that the daemon has disappeared.
+Build request sent: Build{id=089c2214-7846-4362-825f-eca903c9a695, currentDir=/workspaces/Gesmind/android}
+Attempting to read last messages from the daemon log...
+Daemon pid: 73315
+  log file: /home/codespace/.gradle/daemon/8.10/daemon-73315.out.log
+----- Last 20 lines from daemon log file - daemon-73315.out.log -----
+2026-01-17T01:50:59.708+0000 [INFO] [org.gradle.launcher.daemon.server.DaemonRegistryUpdater] Marking the daemon as busy, address: [414f999c-6dfb-43b5-b6b5-7fe735d6f732 port:37481, addresses:[localhost/127.0.0.1]]
+2026-01-17T01:50:59.708+0000 [DEBUG] [org.gradle.launcher.daemon.registry.PersistentDaemonRegistry] Marking busy by address: [414f999c-6dfb-43b5-b6b5-7fe735d6f732 port:37481, addresses:[localhost/127.0.0.1]]
+2026-01-17T01:50:59.709+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Waiting to acquire exclusive lock on daemon addresses registry.
+2026-01-17T01:50:59.709+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Lock acquired on daemon addresses registry.
+2026-01-17T01:50:59.710+0000 [DEBUG] [org.gradle.cache.internal.DefaultFileLockManager] Releasing lock on daemon addresses registry.
+2026-01-17T01:50:59.710+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] resetting idle timer
+2026-01-17T01:50:59.712+0000 [INFO] [org.gradle.launcher.daemon.server.exec.StartBuildOrRespondWithBusy] Daemon is about to start building Build{id=089c2214-7846-4362-825f-eca903c9a695, currentDir=/workspaces/Gesmind/android}. Dispatching build started information...
+2026-01-17T01:50:59.712+0000 [DEBUG] [org.gradle.launcher.daemon.server.DaemonStateCoordinator] daemon is running. Sleeping until state changes.
+2026-01-17T01:50:59.712+0000 [DEBUG] [org.gradle.launcher.daemon.server.SynchronizedDispatchConnection] thread 21: dispatching org.gradle.launcher.daemon.protocol.BuildStarted@4acb86df
+2026-01-17T01:50:59.717+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.EstablishBuildEnvironment] Configuring env variables: [PATH, IRBRC, HISTCONTROL, CODESPACES, CODESPACE_VSCODE_FOLDER, PROMPT_DIRTRIM, VSCODE_PYTHON_AUTOACTIVATE_GUARD, ANDROID_HOME, GITHUB_API_URL, COLORTERM, DOCKER_BUILDKIT, SDKMAN_DIR, rvm_version, VSCODE_GIT_ASKPASS_NODE, PWD, TERM_PROGRAM_VERSION, NVS_DIR, SDKMAN_BROKER_API, CONDA_SCRIPT, HUGO_ROOT, NVM_CD_FLAGS, LESSOPEN, RVM_PATH, SDKMAN_CANDIDATES_API, MY_RUBY_HOME, GITHUB_CODESPACE_TOKEN, ContainerVersion, rvm_path, RAILS_DEVELOPMENT_HOSTS, GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN, PYTHON_ROOT, NVM_SYMLINK_CURRENT, GITHUB_USER, SHLVL, DOTNET_RUNNING_IN_CONTAINER, GITHUB_SERVER_URL, JAVA_ROOT, JAVA_HOME, GIT_EDITOR, TERM, FEATURE_SPARK_POST_COMMIT_CREATE_ITERATION, GRADLE_HOME, NVM_INC, GITHUB_REPOSITORY, VSCODE_IPC_HOOK_CLI, _, NUGET_XMLDOC_MODE, RUBY_HOME, NODE_ROOT, ENABLE_DYNAMIC_INSTALL, TERM_PROGRAM, DOTNET_SKIP_FIRST_TIME_EXPERIENCE, PHP_ROOT, RUBY_ROOT, GOROOT, JUPYTERLAB_PATH, GEM_PATH, NVM_BIN, NVS_USE_XZ, DOTNET_USE_POLLING_FILE_WATCHER, GIT_PAGER, VSCODE_GIT_IPC_HANDLE, PIPX_HOME, HUGO_DIR, MAVEN_ROOT, MAVEN_HOME, ORYX_PREFER_USER_INSTALLED_SDKS, GIT_ASKPASS, SHELL, GITHUB_TOKEN, GITHUB_GRAPHQL_URL, DEBIAN_FLAVOR, GOPATH, OLDPWD, GEM_HOME, PHP_PATH, DOTNET_ROOT, RUBY_VERSION, DEBUGINFOD_URLS, LS_COLORS, PIPX_BIN_DIR, ORYX_ENV_TYPE, LESSCLOSE, BROWSER, rvm_bin_path, CLOUDENV_ENVIRONMENT_ID, ORYX_SDK_STORAGE_BASE_URL, rvm_prefix, LANG, VSCODE_GIT_ASKPASS_MAIN, INTERNAL_VSCS_TARGET_URL, CONDA_DIR, VSCODE_GIT_ASKPASS_EXTRA_ARGS, SDKMAN_CANDIDATES_DIR, NVS_HOME, NVS_ROOT, NVM_DIR, NVS_OS, SHELL_LOGGED_IN, PYTHON_PATH, PYTHONIOENCODING, SDKMAN_PLATFORM, USER, ORYX_DIR, HOSTNAME, CODESPACE_NAME, NPM_GLOBAL, HOME, DYNAMIC_INSTALL_ROOT_DIR]
+2026-01-17T01:50:59.726+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.LogToClient] About to start relaying all logs to the client via the connection.
+2026-01-17T01:50:59.727+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogToClient] The client will now receive all logging from the daemon (pid: 73315). The daemon log file: /home/codespace/.gradle/daemon/8.10/daemon-73315.out.log
+2026-01-17T01:50:59.729+0000 [INFO] [org.gradle.launcher.daemon.server.exec.LogAndCheckHealth] Starting build in new daemon [memory: 3 GiB]
+2026-01-17T01:50:59.732+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] The daemon has started executing the build.
+2026-01-17T01:50:59.732+0000 [DEBUG] [org.gradle.launcher.daemon.server.exec.ExecuteBuild] Executing build with daemon context: DefaultDaemonContext[uid=ac2271e7-2721-4ae0-afaa-d4a4bd2c50ca,javaHome=/opt/java17,javaVersion=17,javaVendor=Eclipse Adoptium,daemonRegistryDir=/home/codespace/.gradle/daemon,pid=73315,idleTimeout=10800000,priority=NORMAL,applyInstrumentationAgent=true,nativeServicesMode=ENABLED,daemonOpts=-XX:+UseG1GC,--add-opens=java.base/java.util=ALL-UNNAMED,--add-opens=java.base/java.lang=ALL-UNNAMED,--add-opens=java.base/java.lang.invoke=ALL-UNNAMED,--add-opens=java.prefs/java.util.prefs=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED,--add-exports=jdk.compiler/com.sun.tools.javac.util=ALL-UNNAMED,--add-opens=java.base/java.nio.charset=ALL-UNNAMED,--add-opens=java.base/java.net=ALL-UNNAMED,--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED,-Xmx3g,-Dfile.encoding=UTF-8,-Duser.country,-Duser.language=en,-Duser.variant]
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+Daemon vm is shutting down... The daemon has exited normally or was terminated in response to a user interrupt.----- End of the daemon log -----
+
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Gradle build daemon disappeared unexpectedly (it may have been killed or may have crashed)
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+> Task :app:lintVitalAnalyzeRelease
+> Task :app:mergeExtDexRelease
