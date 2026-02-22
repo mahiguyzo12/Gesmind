@@ -1,0 +1,17 @@
+
+{
+  "short_name": "Gesmind",
+  "name": "Gesmind Enterprise",
+  "icons": [
+    {
+      "src": "logo.svg",
+      "type": "image/svg+xml",
+      "sizes": "512x512 any maskable"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#38bdf8",
+  "background_color": "#0f172a",
+  "orientation": "any"
+}

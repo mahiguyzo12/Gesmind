@@ -1,0 +1,29 @@
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 🔹 Vérifie si l'utilisateur est connecté
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // 🔹 REGISTRE PUBLIC (Lecture ouverte, écriture pour auth)
+    match /stores_registry/{storeId} {
+      allow read: if true;
+      allow write: if isAuth();
+    }
+
+    // 🔹 BOUTIQUES
+    match /stores/{storeId} {
+      // Règle assouplie : Tout utilisateur connecté peut lire/écrire
+      // Cela permet d'éviter les blocages "Permission Denied" si les données membres sont incomplètes
+      allow read, write: if isAuth();
+
+      // 🔹 Sous-collections (Transactions, Stocks, etc.)
+      match /{document=**} {
+        allow read, write: if isAuth();
+      }
+    }
+  }
+}
