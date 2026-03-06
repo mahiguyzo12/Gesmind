@@ -93,7 +93,14 @@ export const checkForUpdates = async (repoPath: string): Promise<AppUpdate> => {
     };
 
   } catch (error) {
-    console.error("Update check failed:", error);
-    throw error;
+    console.warn("Update check failed (network or config error):", error);
+    // Return no update instead of throwing, to avoid disrupting the app
+    return {
+      hasUpdate: false,
+      currentVersion,
+      latestVersion: currentVersion,
+      downloadUrl: '',
+      releaseNotes: "Impossible de vérifier les mises à jour."
+    };
   }
 };

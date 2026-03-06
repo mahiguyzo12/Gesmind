@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { User, StoreMetadata, StoreSettings, Employee, BackupData } from '../types';
-import { LogIn, User as UserIcon, Lock, PlusCircle, Building, X, Store, Cloud, KeyRound, Check, RefreshCw, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, Mail, Phone, Eye, EyeOff, Copy, FileText, FileSpreadsheet, File, Terminal, Play, RotateCcw, Trash2, AlertTriangle, Shield, Upload, MapPin, Globe, Briefcase, Wand2, Stars, CheckCircle, ArrowRight, ArrowLeft } from 'lucide-react';
+import { LogIn, User as UserIcon, Lock, PlusCircle, Building, X, Store, Cloud, KeyRound, Check, RefreshCw, Sparkles, Moon, Sun, Palette, Image as ImageIcon, Link, Mail, Phone, Eye, EyeOff, Copy, FileText, FileSpreadsheet, File, Terminal, Play, RotateCcw, Trash2, AlertTriangle, Shield, Upload, MapPin, Globe, Briefcase, Wand2, Stars, CheckCircle, ArrowRight, ArrowLeft, LogOut } from 'lucide-react';
 import { getTranslation } from '../translations';
 import { generateStoreLogo } from '../services/geminiService';
 import { GesmindLogo } from './GesmindLogo';
@@ -38,6 +38,7 @@ interface AuthProps {
   onResetPassword?: (newPin: string) => boolean;
 
   lang?: string;
+  onLanguageChange?: () => void;
   
   isDbConnected: boolean;
   onImportBackup?: (data: BackupData) => void; 
@@ -57,6 +58,7 @@ export const Auth: React.FC<AuthProps> = ({
   onFindStore,
   onAddKnownStore,
   lang = 'fr',
+  onLanguageChange,
   isDbConnected
 }) => {
   // VIEW STATES
@@ -212,7 +214,23 @@ export const Auth: React.FC<AuthProps> = ({
         onLogin(user);
     } else {
         setIsLoading(false);
-        setError(t('login_error'));
+        if (users.length === 0 && isDbConnected) {
+             setError(
+               <div className="flex flex-col gap-2 items-start">
+                   <span>{t('login_error')}</span>
+                   <span className="font-bold text-red-400 text-[10px]">Aucun utilisateur chargé. Connexion Cloud requise.</span>
+                   <button 
+                       type="button"
+                       onClick={() => setCurrentView('CLOUD_AUTH')}
+                       className="mt-1 bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-md hover:bg-indigo-700 transition-colors"
+                   >
+                       {t('cloud_login')}
+                   </button>
+               </div>
+             );
+        } else {
+             setError(t('login_error'));
+        }
     }
   };
 
@@ -533,30 +551,70 @@ export const Auth: React.FC<AuthProps> = ({
                      <Store className="w-4 h-4 text-emerald-400" />
                      <span className="font-bold text-sm max-w-[150px] truncate">{storeName || "Sélectionner"}</span>
                  </button>
-                 {isStoreSelectorOpen && (
-                     <div className="absolute top-full left-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-30">
-                         {availableStores.map(store => (
-                             <button
-                                key={store.id}
-                                onClick={() => { onSelectStore(store.id); setIsStoreSelectorOpen(false); }}
-                                className={`w-full text-left px-4 py-3 flex items-center space-x-3 hover:bg-slate-700 ${store.id === currentStoreId ? 'bg-slate-700/50' : ''}`}
-                             >
-                                 <div className="w-8 h-8 rounded bg-slate-600 flex items-center justify-center text-xs font-bold text-white">
-                                     {store.name.charAt(0)}
-                                 </div>
-                                 <span className="text-sm text-white font-medium truncate flex-1">{store.name}</span>
-                             </button>
-                         ))}
-                         <button 
-                            onClick={() => { setCurrentView('SETUP'); setSetupMode('CREATE'); setIsStoreSelectorOpen(false); }}
-                            className="w-full text-left px-4 py-3 border-t border-slate-700 text-xs text-slate-400 hover:text-white hover:bg-slate-700 flex items-center"
-                         >
-                             <PlusCircle className="w-4 h-4 mr-2" /> {t('create_new_store')}
-                         </button>
-                     </div>
-                 )}
+                {isStoreSelectorOpen && (
+                    <>
+                        <div className="fixed inset-0 z-20" onClick={() => setIsStoreSelectorOpen(false)}></div>
+                        <div className="absolute top-full left-0 mt-2 w-64 bg-slate-800 border border-slate-700 rounded-xl shadow-xl overflow-hidden z-30 max-h-60 overflow-y-auto">
+                            {availableStores.map(store => (
+                                <button
+                                   key={store.id}
+                                   onClick={(e) => { 
+                                       e.stopPropagation();
+                                       onSelectStore(store.id); 
+                                       setIsStoreSelectorOpen(false); 
+                                   }}
+                                   className={`w-full text-left px-4 py-3 flex items-center space-x-3 hover:bg-slate-700 transition-colors ${store.id === currentStoreId ? 'bg-slate-700/50 border-l-4 border-emerald-500' : 'border-l-4 border-transparent'}`}
+                                >
+                                    <div className="w-8 h-8 rounded bg-slate-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+                                        {store.name.charAt(0)}
+                                    </div>
+                                    <span className="text-sm text-white font-medium truncate flex-1">{store.name}</span>
+                                    {store.id === currentStoreId && <Check className="w-4 h-4 text-emerald-500" />}
+                                </button>
+                            ))}
+                            <button 
+                               onClick={() => { setCurrentView('SETUP'); setSetupMode('CREATE'); setIsStoreSelectorOpen(false); }}
+                               className="w-full text-left px-4 py-3 border-t border-slate-700 text-xs text-slate-400 hover:text-white hover:bg-slate-700 flex items-center sticky bottom-0 bg-slate-800"
+                            >
+                                <PlusCircle className="w-4 h-4 mr-2" /> {t('create_new_store')}
+                            </button>
+                        </div>
+                    </>
+                )}
              </div>
          ) : <div></div>}
+         
+         <div className="flex items-center gap-2">
+             {onLanguageChange && (
+                 <button 
+                     onClick={onLanguageChange}
+                     className="flex items-center justify-center bg-slate-800/50 backdrop-blur-md border border-slate-700 rounded-xl w-10 h-10 text-white hover:bg-slate-700 transition-colors"
+                     title="Changer de langue"
+                 >
+                     <Globe className="w-5 h-5 text-slate-300" />
+                 </button>
+             )}
+
+             {firebaseUser ? (
+                 <button 
+                     onClick={() => setCurrentView('CLOUD_AUTH')}
+                     className="flex items-center gap-2 bg-emerald-600/90 hover:bg-emerald-700 backdrop-blur-md border border-emerald-500/50 text-white px-3 py-2 rounded-xl text-xs font-bold shadow-lg transition-all transform hover:scale-105 animate-fade-in"
+                     title="Gérer le compte / Déconnexion"
+                 >
+                     <div className="w-2 h-2 bg-white rounded-full animate-pulse shadow-[0_0_8px_rgba(255,255,255,0.8)]"></div>
+                     <span className="hidden sm:inline">Firebase connecté</span>
+                     <LogOut className="w-3 h-3 ml-1 opacity-70" />
+                 </button>
+             ) : (
+                 <button 
+                     onClick={() => setCurrentView('CLOUD_AUTH')}
+                     className="flex items-center justify-center bg-slate-800/50 backdrop-blur-md border border-slate-700 rounded-xl w-10 h-10 text-white hover:bg-slate-700 transition-colors"
+                     title={t('cloud_login')}
+                 >
+                     <Cloud className="w-5 h-5 text-indigo-400" />
+                 </button>
+             )}
+         </div>
       </div>
 
       <div className="relative z-10 w-full max-w-md my-8">

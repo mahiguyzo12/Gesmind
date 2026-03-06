@@ -21,6 +21,7 @@ import { Toast } from './components/Toast';
 import { SplashScreen } from './components/SplashScreen'; 
 import { LoadingScreen } from './components/LoadingScreen';
 import { LanguageSelector } from './components/LanguageSelector'; 
+import { PWAInstall } from './components/PWAInstall'; 
 import { InventoryItem, ViewState, Transaction, User, CashMovement, StoreSettings, BackupData, CloudProvider, CashClosing, Customer, Supplier, AppUpdate, StoreMetadata, Expense, Employee } from './types';
 import { CURRENCIES, PERMISSION_CATEGORIES } from './constants';
 import { checkForUpdates } from './services/updateService';
@@ -117,14 +118,16 @@ const App: React.FC = () => {
         
         if (savedLanguage) {
             setStoreSettings(prev => ({ ...prev, language: savedLanguage }));
-            setIsLanguageSelected(true);
+            // setIsLanguageSelected(true); // Force language selection
+            setIsLanguageSelected(false);
         } else {
             setIsLanguageSelected(false);
         }
 
         // If local mode was explicitly chosen previously
         if (savedCloudStep === 'true' || localStorage.getItem('gesmind_db_mode') === 'LOCAL') {
-            setIsCloudStepDone(true);
+            // setIsCloudStepDone(true); // Force cloud setup
+            setIsCloudStepDone(false);
         }
 
         if (savedStores) {
@@ -207,8 +210,13 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!currentStoreId || !isDbConfigured) return;
 
-    // Reset settings to default to avoid showing stale data
-    setStoreSettings(DEFAULT_SETTINGS);
+    // Reset settings to default but keep known metadata (name/logo) to avoid flickering "Gesmind"
+    const knownStore = knownStores.find(s => s.id === currentStoreId);
+    setStoreSettings({
+        ...DEFAULT_SETTINGS,
+        name: knownStore?.name || DEFAULT_SETTINGS.name,
+        logoUrl: knownStore?.logoUrl || DEFAULT_SETTINGS.logoUrl
+    });
 
     let unsubSettings = () => {};
 
@@ -248,17 +256,25 @@ const App: React.FC = () => {
     return () => { unsubSettings(); };
   }, [currentStoreId, isDbConfigured, currentUser]);
 
+  // --- USERS SUBSCRIPTION (Required for Login) ---
+  useEffect(() => {
+    if (!currentStoreId || !isDbConfigured) return;
+    
+    // Fetch users to allow login verification
+    const unsubUsers = subscribeToUsers(currentStoreId, setUsers);
+    return () => { unsubUsers(); };
+  }, [currentStoreId, isDbConfigured]);
+
   // --- DATA SUBSCRIPTIONS (Requires User Auth) ---
   useEffect(() => {
     if (!currentStoreId || !isDbConfigured) return;
     // Security: In Firebase mode, do not subscribe until the user is fully authenticated and profile loaded
     if (db && !currentUser) return;
 
-    setInventory([]); setTransactions([]); setUsers([]); setEmployees([]); setCustomers([]); setSuppliers([]); setExpenses([]); setCashMovements([]); setCashClosings([]);
+    setInventory([]); setTransactions([]); setEmployees([]); setCustomers([]); setSuppliers([]); setExpenses([]); setCashMovements([]); setCashClosings([]);
 
     const unsubInv = subscribeToInventory(currentStoreId, setInventory);
     const unsubTx = subscribeToTransactions(currentStoreId, setTransactions);
-    const unsubUsers = subscribeToUsers(currentStoreId, setUsers);
     const unsubEmps = subscribeToEmployees(currentStoreId, setEmployees);
     const unsubCust = subscribeToCustomers(currentStoreId, setCustomers);
     const unsubSupp = subscribeToSuppliers(currentStoreId, setSuppliers);
@@ -266,7 +282,7 @@ const App: React.FC = () => {
     const unsubCash = subscribeToCashMovements(currentStoreId, setCashMovements);
     const unsubClose = subscribeToCashClosings(currentStoreId, setCashClosings);
     
-    return () => { unsubInv(); unsubTx(); unsubUsers(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); };
+    return () => { unsubInv(); unsubTx(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); };
   }, [currentStoreId, isDbConfigured, currentUser]);
 
   // --- AUTOMATIC CLOSING CHECK ---
@@ -636,12 +652,14 @@ const App: React.FC = () => {
           onVerifyRecoveryInfo={handleVerifyRecoveryInfo} 
           onResetPassword={handleAdminResetPin} 
           lang={storeSettings.language}
+          onLanguageChange={() => setIsLanguageSelected(false)}
           isDbConnected={isDbConfigured}
           onImportBackup={handleImportBackup}
         />
         {/* Banner visible à l'écran de connexion */}
         {availableUpdate && <UpdateBanner update={availableUpdate} onClose={() => setAvailableUpdate(null)} themeColor={storeSettings.themeColor || '#4f46e5'} />}
         {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <PWAInstall />
       </>
     );
   }
