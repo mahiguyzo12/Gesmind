@@ -25,11 +25,39 @@ export const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAddSupplier, 
   const [website, setWebsite] = useState('');
   const [notes, setNotes] = useState('');
 
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
   const filteredSuppliers = suppliers.filter(s => 
     s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     s.phone.includes(searchTerm) ||
     (s.email && s.email.toLowerCase().includes(searchTerm.toLowerCase()))
   );
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredSuppliers.length && filteredSuppliers.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredSuppliers.map(s => s.id)));
+    }
+  };
+
+  const handleSelectSupplier = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ces ${selectedIds.size} fournisseurs ?`)) {
+      selectedIds.forEach(id => onDeleteSupplier(id));
+      setSelectedIds(new Set());
+    }
+  };
 
   const resetForm = () => {
     setEditingId(null);
@@ -111,8 +139,33 @@ export const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAddSupplier, 
         </button>
       </header>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg flex items-center justify-between animate-fade-in">
+          <div className="flex items-center font-medium">
+            <span className="bg-white/20 px-2 py-1 rounded-md text-sm mr-3">{selectedIds.size} sélectionné(s)</span>
+            <span className="text-sm">Actions groupées :</span>
+          </div>
+          <button 
+            onClick={handleBulkDelete}
+            className="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm transition-colors flex items-center shadow-sm"
+          >
+            <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+          </button>
+        </div>
+      )}
+
       {/* Search Bar */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center">
+        <div className="mr-4 border-r border-slate-100 pr-4 flex items-center">
+             <input 
+                type="checkbox" 
+                className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                checked={filteredSuppliers.length > 0 && selectedIds.size === filteredSuppliers.length}
+                onChange={handleSelectAll}
+                title="Tout sélectionner"
+              />
+        </div>
         <Search className="text-slate-400 w-5 h-5 mr-3" />
         <input 
           type="text" 
@@ -125,9 +178,15 @@ export const Suppliers: React.FC<SuppliersProps> = ({ suppliers, onAddSupplier, 
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredSuppliers.map(supplier => (
-          <div key={supplier.id} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group relative">
+          <div key={supplier.id} className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 hover:shadow-md transition-shadow group relative ${selectedIds.has(supplier.id) ? 'ring-2 ring-indigo-500 bg-indigo-50/30' : ''}`}>
              <div className="flex justify-between items-start mb-4">
                <div className="flex items-center space-x-3">
+                 <input 
+                    type="checkbox" 
+                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 mr-2"
+                    checked={selectedIds.has(supplier.id)}
+                    onChange={() => handleSelectSupplier(supplier.id)}
+                 />
                  <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 font-bold text-lg">
                    {supplier.name.charAt(0).toUpperCase()}
                  </div>

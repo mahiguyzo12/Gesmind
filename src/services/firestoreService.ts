@@ -335,6 +335,23 @@ export const subscribeToSettings = (storeId: string, callback: (data: StoreSetti
   });
 };
 
+export const subscribeToStoreMetadata = (storeId: string, callback: (data: StoreMetadata | null) => void) => {
+  if (!db) {
+      const stores = getLocalData('gesmind_local_stores_registry');
+      const meta = stores.find((s: any) => s.id === storeId) || null;
+      callback(meta);
+      return () => {};
+  }
+  // Public access (stores_registry is readable by everyone)
+  return onSnapshot(doc(db, "stores_registry", storeId), (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as StoreMetadata);
+    } else {
+      callback(null);
+    }
+  }, handleSnapshotError);
+};
+
 export const addData = async (storeId: string, collectionName: string, data: any) => {
   const safeData = cleanData(data);
   if (!db) {

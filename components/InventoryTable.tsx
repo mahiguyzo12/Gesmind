@@ -34,6 +34,12 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkEditModalOpen, setIsBulkEditModalOpen] = useState(false);
+  const [bulkEditField, setBulkEditField] = useState<'category' | 'supplier' | 'location'>('category');
+  const [bulkEditValue, setBulkEditValue] = useState('');
+
   // Export Menu State
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
@@ -72,6 +78,56 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
+
+  // Selection Logic
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredItems.length && filteredItems.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredItems.map(i => i.id)));
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBulkDelete = () => {
+    if (!canDelete) return;
+    if (window.confirm(`Êtes-vous sûr de vouloir supprimer ces ${selectedIds.size} produits ?`)) {
+      selectedIds.forEach(id => onDeleteItem(id));
+      setSelectedIds(new Set());
+    }
+  };
+
+  const handleBulkEdit = () => {
+    if (!canEdit) return;
+    setIsBulkEditModalOpen(true);
+  };
+
+  const submitBulkEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bulkEditValue) return;
+
+    selectedIds.forEach(id => {
+      const update: Partial<InventoryItem> = {};
+      if (bulkEditField === 'category') update.category = bulkEditValue;
+      if (bulkEditField === 'supplier') update.supplier = bulkEditValue;
+      if (bulkEditField === 'location') update.location = bulkEditValue;
+      update.lastUpdated = new Date().toISOString();
+      onUpdateItem(id, update);
+    });
+
+    setIsBulkEditModalOpen(false);
+    setSelectedIds(new Set());
+    setBulkEditValue('');
+  };
 
   // Calculs Financiers Globaux (Basés sur la vue filtrée)
   const totalPurchaseValue = filteredItems.reduce((acc, item) => acc + ((item.purchasePrice || 0) * item.quantity), 0) * currency.rate;
@@ -419,12 +475,48 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
         </div>
       </div>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg flex items-center justify-between mb-4 animate-fade-in">
+          <div className="flex items-center font-medium">
+            <span className="bg-white/20 px-2 py-1 rounded-md text-sm mr-3">{selectedIds.size} sélectionné(s)</span>
+            <span className="text-sm">Actions groupées :</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            {canEdit && (
+              <button 
+                onClick={() => setIsBulkEditModalOpen(true)}
+                className="px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg text-sm transition-colors flex items-center"
+              >
+                <Edit2 className="w-4 h-4 mr-2" /> Modifier
+              </button>
+            )}
+            {canDelete && (
+              <button 
+                onClick={handleBulkDelete}
+                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 rounded-lg text-sm transition-colors flex items-center shadow-sm"
+              >
+                <Trash2 className="w-4 h-4 mr-2" /> Supprimer
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden flex-1 flex flex-col min-h-[60vh]">
         <div className="overflow-auto flex-1">
           <table className="w-full text-left border-collapse">
             <thead className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10 shadow-sm">
               <tr>
+                <th className="px-6 py-4 bg-slate-50 w-10">
+                  <input 
+                    type="checkbox" 
+                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={filteredItems.length > 0 && selectedIds.size === filteredItems.length}
+                    onChange={handleSelectAll}
+                  />
+                </th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">Produit</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider bg-slate-50">Stock</th>
                 <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right bg-slate-50">Prix Achat</th>
@@ -439,7 +531,15 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
               {filteredItems.map((item) => {
                  const margin = (item.price - (item.purchasePrice || 0)) * currency.rate;
                  return (
-                <tr key={item.id} className="hover:bg-slate-50 transition-colors group">
+                <tr key={item.id} className={`hover:bg-slate-50 transition-colors group ${selectedIds.has(item.id) ? 'bg-indigo-50/50' : ''}`}>
+                  <td className="px-6 py-4">
+                    <input 
+                      type="checkbox" 
+                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => handleSelectRow(item.id)}
+                    />
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-800">{item.name}</span>
@@ -510,6 +610,66 @@ export const InventoryTable: React.FC<InventoryTableProps> = ({
           </table>
         </div>
       </div>
+
+      {/* Bulk Edit Modal */}
+      {isBulkEditModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 animate-fade-in-up">
+            <h3 className="text-lg font-bold text-slate-800 mb-4">Modification Groupée ({selectedIds.size} éléments)</h3>
+            
+            <form onSubmit={submitBulkEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Champ à modifier</label>
+                <select 
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                  value={bulkEditField}
+                  onChange={(e) => setBulkEditField(e.target.value as any)}
+                >
+                  <option value="category">Catégorie</option>
+                  <option value="supplier">Fournisseur</option>
+                  <option value="location">Emplacement</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Nouvelle valeur</label>
+                {bulkEditField === 'category' ? (
+                  <select 
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                    value={bulkEditValue}
+                    onChange={(e) => setBulkEditValue(e.target.value)}
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                ) : bulkEditField === 'supplier' ? (
+                  <select 
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                    value={bulkEditValue}
+                    onChange={(e) => setBulkEditValue(e.target.value)}
+                  >
+                    <option value="">-- Sélectionner --</option>
+                    {suppliers.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                  </select>
+                ) : (
+                  <input 
+                    type="text" 
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg"
+                    value={bulkEditValue}
+                    onChange={(e) => setBulkEditValue(e.target.value)}
+                    placeholder="Nouvel emplacement..."
+                  />
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 pt-4">
+                <button type="button" onClick={() => setIsBulkEditModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg">Annuler</button>
+                <button type="submit" className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Appliquer</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add/Edit Modal (Existing Code kept same but uses handleSubmit which now adds createdBy) */}
       {isModalOpen && (

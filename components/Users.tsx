@@ -31,6 +31,11 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
   const [newAvatar, setNewAvatar] = useState<string | undefined>(undefined);
   
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  
+  // Bulk Selection State
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkPermissionsModalOpen, setIsBulkPermissionsModalOpen] = useState(false);
+  const [bulkPermissionsToAdd, setBulkPermissionsToAdd] = useState<string[]>([]);
 
   if (currentUser.role !== 'ADMIN') {
     return (
@@ -41,6 +46,63 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
       </div>
     );
   }
+
+  // Filter out current user from bulk selection to avoid locking oneself out or weird states
+  const selectableUsers = users.filter(u => u.id !== currentUser.id);
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === selectableUsers.length && selectableUsers.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableUsers.map(u => u.id)));
+    }
+  };
+
+  const handleSelectUser = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const toggleBulkPermission = (key: string) => {
+    setBulkPermissionsToAdd(prev => 
+      prev.includes(key) ? prev.filter(p => p !== key) : [...prev, key]
+    );
+  };
+
+  const toggleBulkCategory = (catId: string, actions: {id: string}[]) => {
+    const allKeys = actions.map(a => `${catId}.${a.id}`);
+    const hasAll = allKeys.every(k => bulkPermissionsToAdd.includes(k));
+    
+    if (hasAll) {
+        setBulkPermissionsToAdd(prev => prev.filter(p => !allKeys.includes(p)));
+    } else {
+        setBulkPermissionsToAdd(prev => [...new Set([...prev, ...allKeys])]);
+    }
+  };
+
+  const handleBulkPermissionSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (bulkPermissionsToAdd.length === 0) return;
+
+      selectedIds.forEach(userId => {
+          const user = users.find(u => u.id === userId);
+          if (user) {
+              const currentPerms = user.permissions || [];
+              // Merge existing permissions with new ones
+              const updatedPerms = [...new Set([...currentPerms, ...bulkPermissionsToAdd])];
+              onUpdateUser(userId, { permissions: updatedPerms });
+          }
+      });
+
+      setIsBulkPermissionsModalOpen(false);
+      setSelectedIds(new Set());
+      setBulkPermissionsToAdd([]);
+  };
 
   const formatLastSeen = (dateStr?: string) => {
     if (!dateStr) return { text: 'Jamais', isOnline: false };
@@ -169,9 +231,22 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
   return (
     <div className="space-y-6 animate-fade-in">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-3xl font-bold text-slate-800">Gestion des Accès Utilisateurs</h2>
-          <p className="text-slate-500">Créez des comptes et définissez les permissions détaillées.</p>
+        <div className="flex items-center gap-4">
+           {selectableUsers.length > 0 && (
+             <div className="flex items-center bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                <input 
+                    type="checkbox" 
+                    className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                    checked={selectableUsers.length > 0 && selectedIds.size === selectableUsers.length}
+                    onChange={handleSelectAll}
+                    title="Tout sélectionner"
+                />
+             </div>
+           )}
+           <div>
+             <h2 className="text-3xl font-bold text-slate-800">Gestion des Accès</h2>
+             <p className="text-slate-500">Créez des comptes et définissez les permissions.</p>
+           </div>
         </div>
         <button 
           onClick={openAddModal}
@@ -181,11 +256,37 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
         </button>
       </header>
 
+      {/* Bulk Actions Bar */}
+      {selectedIds.size > 0 && (
+        <div className="bg-indigo-600 text-white p-3 rounded-xl shadow-lg flex items-center justify-between animate-fade-in">
+          <div className="flex items-center font-medium">
+            <span className="bg-white/20 px-2 py-1 rounded-md text-sm mr-3">{selectedIds.size} sélectionné(s)</span>
+            <span className="text-sm">Actions groupées :</span>
+          </div>
+          <button 
+            onClick={() => setIsBulkPermissionsModalOpen(true)}
+            className="px-4 py-1.5 bg-white text-indigo-700 hover:bg-indigo-50 rounded-lg text-sm font-bold transition-colors flex items-center shadow-sm"
+          >
+            <Lock className="w-4 h-4 mr-2" /> Modifier Permissions
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {users.map(user => {
           const status = formatLastSeen(user.lastLogin);
           return (
-          <div key={user.id} className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-full group relative">
+          <div key={user.id} className={`bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col justify-between h-full group relative transition-all ${selectedIds.has(user.id) ? 'ring-2 ring-indigo-500 bg-indigo-50/30' : ''}`}>
+             <div className="absolute top-4 left-4 z-10">
+                {user.id !== currentUser.id && (
+                    <input 
+                        type="checkbox" 
+                        className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                        checked={selectedIds.has(user.id)}
+                        onChange={() => handleSelectUser(user.id)}
+                    />
+                )}
+             </div>
              <div className="absolute top-4 right-4 flex items-center">
                 <div className={`w-2 h-2 rounded-full mr-1.5 ${status.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
                 <span className={`text-[10px] font-medium ${status.isOnline ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -193,7 +294,7 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
                 </span>
              </div>
 
-             <div className="flex items-start space-x-4 mb-4">
+             <div className="flex items-start space-x-4 mb-4 mt-6">
                 <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-full border-2 border-slate-100 object-cover" />
                 <div className="flex-1 min-w-0 pt-1">
                   <h3 className="text-lg font-bold text-slate-800 truncate">{user.name}</h3>
@@ -261,6 +362,86 @@ export const Users: React.FC<UsersProps> = ({ users, onAddUser, onUpdateUser, on
           </div>
         )})}
       </div>
+
+      {/* BULK PERMISSIONS MODAL */}
+      {isBulkPermissionsModalOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-6 animate-fade-in-up">
+            <h3 className="text-xl font-bold text-slate-800 mb-2">Modification Groupée des Permissions</h3>
+            <p className="text-sm text-slate-500 mb-6">
+                Sélectionnez les permissions à <span className="font-bold text-indigo-600">AJOUTER</span> aux {selectedIds.size} utilisateurs sélectionnés. 
+                Les permissions existantes seront conservées.
+            </p>
+            
+            <form onSubmit={handleBulkPermissionSubmit}>
+                <div className="bg-slate-50 p-6 rounded-xl border border-slate-100 mb-6 max-h-[50vh] overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {PERMISSION_CATEGORIES.map(category => {
+                        const catKeys = category.actions.map(a => `${category.id}.${a.id}`);
+                        const allSelected = catKeys.every(k => bulkPermissionsToAdd.includes(k));
+                        
+                        return (
+                            <div key={category.id} className="bg-white p-4 rounded-lg border border-slate-200">
+                                <div className="flex justify-between items-center mb-3 pb-2 border-b border-slate-100">
+                                    <div className="flex items-center">
+                                        <label className="flex items-center cursor-pointer mr-2" title="Tout cocher dans cette catégorie">
+                                            <input 
+                                                type="checkbox"
+                                                className="peer hidden"
+                                                checked={allSelected}
+                                                onChange={() => toggleBulkCategory(category.id, category.actions)}
+                                            />
+                                            {allSelected ? (
+                                                <CheckSquare className="w-5 h-5 text-indigo-600" />
+                                            ) : (
+                                                <Square className="w-5 h-5 text-slate-300 hover:text-slate-400" />
+                                            )}
+                                        </label>
+                                        <h5 className="font-bold text-slate-800 text-sm">{category.label}</h5>
+                                    </div>
+                                </div>
+                                <div className="space-y-2 pl-2">
+                                    {category.actions.map(action => {
+                                        const permKey = `${category.id}.${action.id}`;
+                                        const isChecked = bulkPermissionsToAdd.includes(permKey);
+                                        return (
+                                            <label key={permKey} className="flex items-start space-x-2 cursor-pointer group">
+                                                <div className="relative flex items-center pt-0.5">
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="peer hidden"
+                                                        checked={isChecked}
+                                                        onChange={() => toggleBulkPermission(permKey)}
+                                                    />
+                                                    {isChecked ? (
+                                                        <CheckSquare className="w-4 h-4 text-indigo-600" />
+                                                    ) : (
+                                                        <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
+                                                    )}
+                                                </div>
+                                                <span className={`text-sm ${isChecked ? 'text-slate-800 font-medium' : 'text-slate-500'}`}>
+                                                    {action.label}
+                                                </span>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        );
+                    })}
+                    </div>
+                </div>
+
+                <div className="flex justify-end space-x-3">
+                    <button type="button" onClick={() => setIsBulkPermissionsModalOpen(false)} className="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">Annuler</button>
+                    <button type="submit" className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 shadow-md">
+                        Appliquer les permissions
+                    </button>
+                </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* LOGIN AS MODAL */}
       {loginAsUser && (

@@ -48,7 +48,8 @@ import {
   getStoreMetadata,
   processForgottenClosings,
   getUserByAuthUid,
-  getUserInStoreByAuthUid 
+  getUserInStoreByAuthUid,
+  subscribeToStoreMetadata
 } from './src/services/firestoreService';
 
 const DEFAULT_SETTINGS: StoreSettings = {
@@ -202,8 +203,57 @@ const App: React.FC = () => {
     if (currentStoreId) localStorage.setItem('gesmind_last_store_id', currentStoreId);
   }, [currentStoreId]);
 
+  // --- SETTINGS SUBSCRIPTION (Independent of User Auth) ---
   useEffect(() => {
     if (!currentStoreId || !isDbConfigured) return;
+
+    // Reset settings to default to avoid showing stale data
+    setStoreSettings(DEFAULT_SETTINGS);
+
+    let unsubSettings = () => {};
+
+    if (currentUser) {
+        // Authenticated: Get full settings
+        unsubSettings = subscribeToSettings(currentStoreId, (settings) => {
+          if (settings) {
+            setStoreSettings(settings);
+            localStorage.setItem('gesmind_language', settings.language); 
+            setKnownStores(prev => {
+                if (!prev.find(s => s.id === currentStoreId)) {
+                    return [...prev, { id: currentStoreId, name: settings.name, logoUrl: settings.logoUrl }];
+                }
+                return prev.map(s => s.id === currentStoreId ? { ...s, name: settings.name, logoUrl: settings.logoUrl } : s);
+            });
+          }
+        });
+    } else {
+        // Not Authenticated: Get public metadata (name, logo)
+        unsubSettings = subscribeToStoreMetadata(currentStoreId, (metadata) => {
+            if (metadata) {
+                setStoreSettings(prev => ({
+                    ...prev,
+                    name: metadata.name,
+                    logoUrl: metadata.logoUrl
+                }));
+                setKnownStores(prev => {
+                    if (!prev.find(s => s.id === currentStoreId)) {
+                        return [...prev, { id: currentStoreId, name: metadata.name, logoUrl: metadata.logoUrl }];
+                    }
+                    return prev.map(s => s.id === currentStoreId ? { ...s, name: metadata.name, logoUrl: metadata.logoUrl } : s);
+                });
+            }
+        });
+    }
+
+    return () => { unsubSettings(); };
+  }, [currentStoreId, isDbConfigured, currentUser]);
+
+  // --- DATA SUBSCRIPTIONS (Requires User Auth) ---
+  useEffect(() => {
+    if (!currentStoreId || !isDbConfigured) return;
+    // Security: In Firebase mode, do not subscribe until the user is fully authenticated and profile loaded
+    if (db && !currentUser) return;
+
     setInventory([]); setTransactions([]); setUsers([]); setEmployees([]); setCustomers([]); setSuppliers([]); setExpenses([]); setCashMovements([]); setCashClosings([]);
 
     const unsubInv = subscribeToInventory(currentStoreId, setInventory);
@@ -216,21 +266,8 @@ const App: React.FC = () => {
     const unsubCash = subscribeToCashMovements(currentStoreId, setCashMovements);
     const unsubClose = subscribeToCashClosings(currentStoreId, setCashClosings);
     
-    const unsubSettings = subscribeToSettings(currentStoreId, (settings) => {
-      if (settings) {
-        setStoreSettings(settings);
-        localStorage.setItem('gesmind_language', settings.language); 
-        setKnownStores(prev => {
-            if (!prev.find(s => s.id === currentStoreId)) {
-                return [...prev, { id: currentStoreId, name: settings.name, logoUrl: settings.logoUrl }];
-            }
-            return prev.map(s => s.id === currentStoreId ? { ...s, name: settings.name, logoUrl: settings.logoUrl } : s);
-        });
-      }
-    });
-
-    return () => { unsubInv(); unsubTx(); unsubUsers(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); unsubSettings(); };
-  }, [currentStoreId, isDbConfigured]);
+    return () => { unsubInv(); unsubTx(); unsubUsers(); unsubEmps(); unsubCust(); unsubSupp(); unsubExp(); unsubCash(); unsubClose(); };
+  }, [currentStoreId, isDbConfigured, currentUser]);
 
   // --- AUTOMATIC CLOSING CHECK ---
   useEffect(() => {

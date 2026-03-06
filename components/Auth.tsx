@@ -691,7 +691,6 @@ export const Auth: React.FC<AuthProps> = ({
                     <button onClick={() => setSetupMode('JOIN')} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-bold mb-6 shadow-lg">{t('join_store')}</button>
                     <div className="relative mb-6"><div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200"></div></div><div className="relative flex justify-center text-xs uppercase"><span className="bg-white px-2 text-slate-400">{t('or')}</span></div></div>
                     <button onClick={() => setSetupMode('CREATE_FORM')} className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold mb-4">{t('create_new_store')}</button>
-                    <button onClick={() => setCurrentView('CLOUD_AUTH')} className="text-xs text-blue-500 underline flex items-center justify-center mx-auto"><Cloud className="w-3 h-3 mr-1"/> {t('cloud_login')}</button>
                 </div>
             )}
 
